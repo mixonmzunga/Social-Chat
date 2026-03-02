@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  username      String?  @unique
+  password      String?
+  phone         String?
+  avatar        String?
+  bio           String?
+  isOnline      Boolean  @default(false)
+  lastSeen      DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  sentMessages     Message[]
+  conversations    ConversationParticipant[]
+  groups           GroupMember[]
+  callParticipants CallParticipant[]
+  initiatedCalls   Call[]
+}
+
+model Conversation {
+  id            String   @id @default(cuid())
+  type          String   @default("private") // private, group
+  name          String?
+  avatar        String?
+  lastMessageAt DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  participants ConversationParticipant[]
+  messages     Message[]
+  group        Group?
+  calls        Call[]
+}
+
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([conversationId, userId])
+}
+
+model Group {
+  id             String   @id @default(cuid())
+  conversationId String   @unique
+  description    String?
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  members      GroupMember[]
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String
+  userId    String
+  role      String   @default("member") // admin, member
+  joinedAt  DateTime @default(now())
+  
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([groupId, userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String
+  type           String   @default("text") // text, image, file, audio
+  fileUrl        String?
+  fileName       String?
+  fileSize       Int?
+  status         String   @default("sent") // sent, delivered, read
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  readBy       MessageRead[]
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+  
+  // Relations
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  
+  @@unique([messageId, userId])
+}
+
+model Call {
+  id             String   @id @default(cuid())
+  conversationId String
+  initiatorId    String
+  type           String   // audio, video
+  status         String   @default("initiated") // initiated, ongoing, ended, missed
+  startedAt      DateTime?
+  endedAt        DateTime?
+  duration       Int?     // in seconds
+  createdAt      DateTime @default(now())
+  
+  // Relations
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  initiator    User         @relation(fields: [initiatorId], references: [id], onDelete: Cascade)
+  participants CallParticipant[]
+}
+
+model CallParticipant {
+  id       String    @id @default(cuid())
+  callId   String
+  userId   String
+  joinedAt DateTime  @default(now())
+  leftAt   DateTime?
+  
+  // Relations
+  call Call @relation(fields: [callId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([callId, userId])
+}
