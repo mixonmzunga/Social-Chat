@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const conversationId = searchParams.get('conversationId')
+    const userId = searchParams.get('userId') // Added to know who is fetching
     const limit = parseInt(searchParams.get('limit') || '50')
     const before = searchParams.get('before') // message ID to load older messages
     const after = searchParams.get('after') // ISO timestamp to get newer messages
@@ -19,13 +20,27 @@ export async function GET(request: NextRequest) {
 
     // Build where clause
     const whereClause: any = { conversationId }
-    
+
     if (before) {
       whereClause.id = { lt: before }
     }
-    
+
     if (after) {
       whereClause.createdAt = { gt: new Date(after) }
+    }
+
+    // If userId is provided, mark messages sent by others as delivered
+    if (userId) {
+      await db.message.updateMany({
+        where: {
+          conversationId,
+          senderId: { not: userId },
+          status: 'sent'
+        },
+        data: {
+          status: 'delivered'
+        }
+      })
     }
 
     const messages = await db.message.findMany({
@@ -36,11 +51,6 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             avatar: true
-          }
-        },
-        readBy: {
-          include: {
-            message: true
           }
         }
       },
@@ -53,7 +63,14 @@ export async function GET(request: NextRequest) {
     // Reverse to get chronological order (only when fetching history)
     const orderedMessages = after ? messages : messages.reverse()
 
-    return NextResponse.json({ messages: orderedMessages })
+    // Parse JSON fields for response
+    const parsedMessages = orderedMessages.map((msg: any) => ({
+      ...msg,
+      location: msg.locationData ? JSON.parse(msg.locationData) : undefined,
+      contact: msg.contactData ? JSON.parse(msg.contactData) : undefined,
+    }))
+
+    return NextResponse.json({ messages: parsedMessages })
   } catch (error) {
     console.error('Get messages error:', error)
     return NextResponse.json(
@@ -67,13 +84,62 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { conversationId, senderId, content, type, fileUrl, fileName, fileSize } = body
+    const { conversationId, senderId, type, fileUrl, fileName, fileSize, location, contact } = body
+    let { content } = body
 
-    if (!conversationId || !senderId || !content) {
+    if (!conversationId || !senderId) {
       return NextResponse.json(
-        { error: 'Conversation ID, sender ID, and content are required' },
+        { error: 'Conversation ID and sender ID are required' },
         { status: 400 }
       )
+    }
+
+    // Auto-generate content for non-text types if not provided
+    const msgType = type || 'text'
+    if (!content) {
+      const contentMap: Record<string, string> = {
+        image: '📷 Image',
+        video: '🎥 Video',
+        audio: '🎵 Audio',
+        file: '📎 File',
+        location: '📍 Location shared',
+        contact: '👤 Contact shared',
+      }
+      content = contentMap[msgType] || ''
+    }
+
+    if (!content && msgType === 'text') {
+      return NextResponse.json(
+        { error: 'Content is required for text messages' },
+        { status: 400 }
+      )
+    }
+
+    // Determine initial status based on recipient online status
+    let initialStatus = 'sent'
+
+    // Get conversation participants to check if other user is online
+    const conversation = await db.conversation.findUnique({
+      where: { id: conversationId },
+      include: {
+        participants: {
+          where: {
+            userId: { not: senderId }
+          },
+          include: {
+            user: {
+              select: {
+                isOnline: true
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // If it's a private chat and the other person is online, set to delivered
+    if (conversation?.type === 'private' && conversation.participants[0]?.user.isOnline) {
+      initialStatus = 'delivered'
     }
 
     // Create message
@@ -82,11 +148,13 @@ export async function POST(request: NextRequest) {
         conversationId,
         senderId,
         content,
-        type: type || 'text',
+        type: msgType,
         fileUrl,
         fileName,
         fileSize,
-        status: 'sent'
+        locationData: location ? JSON.stringify(location) : null,
+        contactData: contact ? JSON.stringify(contact) : null,
+        status: initialStatus
       },
       include: {
         sender: {
@@ -99,15 +167,49 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // Parse JSON fields back for the response
+    const responseMessage = {
+      ...message,
+      location: message.locationData ? JSON.parse(message.locationData) : undefined,
+      contact: message.contactData ? JSON.parse(message.contactData) : undefined,
+    }
+
     // Update conversation last message time
     await db.conversation.update({
       where: { id: conversationId },
       data: { lastMessageAt: new Date() }
     })
 
-    return NextResponse.json({ message })
+    return NextResponse.json({ message: responseMessage })
   } catch (error) {
     console.error('Send message error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}
+
+// Delete a message
+export async function DELETE(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { messageId } = body
+
+    if (!messageId) {
+      return NextResponse.json(
+        { error: 'Message ID is required' },
+        { status: 400 }
+      )
+    }
+
+    await db.message.delete({
+      where: { id: messageId }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Delete message error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

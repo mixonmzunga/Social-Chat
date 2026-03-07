@@ -15,9 +15,32 @@ import { DesktopRightSidebar } from './desktop-right-sidebar'
 type Screen = 'feed' | 'messages' | 'friends' | 'media' | 'settings'
 
 export function SocialLayout() {
-  const { selectedConversation } = useChatStore()
+  const { selectedConversation, currentUser, setPendingFriendRequestsCount, textSize } = useChatStore()
   const [activeScreen, setActiveScreen] = useState<Screen>('feed')
   const [isMobile, setIsMobile] = useState(true)
+
+  useEffect(() => {
+    document.documentElement.classList.remove('text-size-small', 'text-size-medium', 'text-size-large')
+    document.documentElement.classList.add(`text-size-${textSize || 'medium'}`)
+  }, [textSize])
+
+  useEffect(() => {
+    const fetchPendingRequests = async () => {
+      if (!currentUser?.id) return
+      try {
+        const res = await fetch(`/api/friends/request?userId=${currentUser.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setPendingFriendRequestsCount(data.requests?.length || 0)
+        }
+      } catch (error) {
+        console.error('Failed to fetch pending requests count:', error)
+      }
+    }
+
+    fetchPendingRequests()
+    // Optional: set up an interval or refresh on navigation to 'friends'
+  }, [currentUser?.id, activeScreen])
 
   useEffect(() => {
     const checkMobile = () => {

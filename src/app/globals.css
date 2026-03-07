@@ -129,6 +129,15 @@
     overscroll-behavior: none;
     scroll-behavior: smooth;
   }
+  html.text-size-small {
+    font-size: 14px;
+  }
+  html.text-size-medium {
+    font-size: 16px;
+  }
+  html.text-size-large {
+    font-size: 18px;
+  }
 }
 
 /* Container Layout */

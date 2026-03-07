@@ -1,11 +1,9 @@
-'use client'
-
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Home, MessageCircle, Users, Image, Settings
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useChatStore } from '@/store/chat-store'
 
 type Tab = 'feed' | 'messages' | 'friends' | 'media' | 'settings'
 
@@ -15,10 +13,14 @@ interface BottomNavigationProps {
 }
 
 export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationProps) {
+  const { conversations, pendingFriendRequestsCount } = useChatStore()
+
+  const totalUnreadMessages = conversations.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0)
+
   const tabs: { id: Tab; icon: typeof Home; label: string; badge?: number }[] = [
     { id: 'feed', icon: Home, label: 'Feed' },
-    { id: 'messages', icon: MessageCircle, label: 'Chats', badge: 3 },
-    { id: 'friends', icon: Users, label: 'Friends', badge: 5 },
+    { id: 'messages', icon: MessageCircle, label: 'Chats', badge: totalUnreadMessages },
+    { id: 'friends', icon: Users, label: 'Friends', badge: pendingFriendRequestsCount },
     { id: 'media', icon: Image, label: 'Media' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ]
@@ -54,17 +56,17 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               {/* Icon Container */}
               <div className="relative z-10 flex items-center justify-center">
                 <motion.div
-                  animate={{ 
+                  animate={{
                     y: isActive ? -2 : 0,
                     scale: isActive ? 1.1 : 1
                   }}
                   transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 >
-                  <Icon 
+                  <Icon
                     className={cn(
                       "w-6 h-6 transition-colors",
-                      isActive 
-                        ? "text-violet-600 dark:text-violet-400" 
+                      isActive
+                        ? "text-violet-600 dark:text-violet-400"
                         : "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400"
                     )}
                     strokeWidth={isActive ? 2.5 : 2}
@@ -72,7 +74,7 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
                 </motion.div>
 
                 {/* Badge */}
-                {tab.badge && tab.badge > 0 && (
+                {typeof tab.badge === 'number' && tab.badge > 0 && (
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
@@ -86,16 +88,16 @@ export function BottomNavigation({ activeTab, onTabChange }: BottomNavigationPro
               </div>
 
               {/* Label */}
-              <motion.span 
-                animate={{ 
+              <motion.span
+                animate={{
                   y: isActive ? -1 : 0,
                   fontWeight: isActive ? 600 : 500
                 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 className={cn(
                   "relative z-10 text-[10px] mt-0.5 font-medium transition-colors",
-                  isActive 
-                    ? "text-violet-600 dark:text-violet-400" 
+                  isActive
+                    ? "text-violet-600 dark:text-violet-400"
                     : "text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-400"
                 )}
               >

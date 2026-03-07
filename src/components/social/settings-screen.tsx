@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User, Bell, Lock, Palette, HelpCircle, Info, LogOut,
   Moon, Sun, Shield, Globe, MessageCircle, ChevronRight, ArrowLeft,
   Settings as SettingsIcon, Check, Wifi, Database, X,
-  Smartphone, Star, FileText, Phone, Volume2, Vibrate, Mail, AlertCircle
+  Smartphone, Star, FileText, Phone, Volume2, Vibrate, Mail, AlertCircle,
+  Camera
 } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Switch } from '@/components/ui/switch'
@@ -56,7 +57,7 @@ const sections: { title: string; items: SettingItem[] }[] = [
   {
     title: 'Account',
     items: [
-      { id: 'profile', icon: User, iconBg: 'bg-blue-500', iconColor: 'text-white', label: 'Account', description: 'Privacy, security, change number' },
+      { id: 'profile', icon: User, iconBg: 'bg-blue-500', iconColor: 'text-white', label: 'Account', description: 'Manage your profile and account info' },
       { id: 'privacy', icon: Shield, iconBg: 'bg-teal-500', iconColor: 'text-white', label: 'Privacy', description: 'Block contacts, disappearing messages' },
       { id: 'security', icon: Lock, iconBg: 'bg-green-600', iconColor: 'text-white', label: 'Security', description: 'Two-step verification, fingerprint' },
       { id: 'notifications', icon: Bell, iconBg: 'bg-red-500', iconColor: 'text-white', label: 'Notifications', description: 'Message, group & call tones' },
@@ -99,6 +100,45 @@ interface DetailPanelMobileProps {
 }
 
 function DetailPanelMobile({ id, settings, updateSetting, theme, setTheme, currentUser }: DetailPanelMobileProps) {
+  const { setCurrentUser, textSize, setTextSize } = useChatStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser) return
+
+    setIsUploading(true)
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const base64Image = ev.target?.result as string
+      if (!base64Image) {
+        setIsUploading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/users/${currentUser.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar: base64Image }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUser(data.user)
+        } else {
+          console.error('Failed to update avatar')
+        }
+      } catch (error) {
+        console.error('Error updating avatar:', error)
+      } finally {
+        setIsUploading(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   const renderContent = () => {
     switch (id) {
       case 'notifications':
@@ -246,15 +286,18 @@ function DetailPanelMobile({ id, settings, updateSetting, theme, setTheme, curre
                 {(['small', 'medium', 'large'] as const).map(size => (
                   <button
                     key={size}
-                    onClick={() => updateSetting('chatFontSize', size)}
+                    onClick={() => {
+                      updateSetting('chatFontSize', size)
+                      setTextSize(size)
+                    }}
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-colors',
-                      settings.chatFontSize === size
+                      textSize === size
                         ? 'border-teal-500 bg-teal-50 dark:bg-teal-900/20'
                         : 'border-gray-200 dark:border-[#3a3a3c]'
                     )}
                   >
-                    {settings.chatFontSize === size && <Check className="w-4 h-4 text-teal-600" />}
+                    {textSize === size && <Check className="w-4 h-4 text-teal-600" />}
                     <span className={cn('font-medium text-gray-900 dark:text-white capitalize', size === 'small' ? 'text-sm' : size === 'large' ? 'text-lg' : 'text-base')}>{size}</span>
                   </button>
                 ))}
@@ -408,20 +451,56 @@ function DetailPanelMobile({ id, settings, updateSetting, theme, setTheme, curre
       case 'profile':
       default:
         return (
-          <div className="px-4 space-y-4">
-            <div className="bg-white dark:bg-[#2c2c2e] rounded-2xl p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
-              <p className="text-[15px] font-medium text-gray-900 dark:text-white mt-1">{currentUser?.email}</p>
+          <div className="space-y-4">
+            <div className="bg-white dark:bg-[#2c2c2e] rounded-2xl p-6 text-center">
+              <div className="relative inline-block mb-4">
+                <Avatar className="w-24 h-24 ring-4 ring-teal-500/20">
+                  <AvatarImage src={currentUser?.avatar || undefined} />
+                  <AvatarFallback className="bg-teal-600 text-white text-3xl font-bold">
+                    {currentUser ? getInitials(currentUser.name) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={cn(
+                    "absolute bottom-0 right-0 p-2 bg-white dark:bg-[#323234] rounded-full shadow-lg border border-gray-100 dark:border-[#3a3a3c] transition-opacity",
+                    isUploading && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  <Camera className={cn("w-4 h-4 text-teal-600", isUploading && "animate-pulse")} />
+                </button>
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">{currentUser?.name || 'User'}</h2>
+              <p className="text-teal-600 dark:text-teal-400 font-medium text-sm">@{currentUser?.username || 'username'}</p>
             </div>
 
-            <div className="bg-white dark:bg-[#2c2c2e] rounded-2xl p-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">Phone</p>
-              <p className="text-[15px] font-medium text-gray-900 dark:text-white mt-1">{currentUser?.phone}</p>
+            <div className="bg-white dark:bg-[#2c2c2e] rounded-2xl overflow-hidden divide-y divide-gray-100 dark:divide-[#3a3a3c]">
+              {[
+                { icon: User, label: 'Name', value: currentUser?.name || 'User' },
+                { icon: Mail, label: 'Email', value: currentUser?.email || 'Not set' },
+                { icon: Phone, label: 'Phone', value: currentUser?.phone || 'Not set' },
+                { icon: Info, label: 'Bio', value: currentUser?.bio || 'Available' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-4 p-4">
+                  <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-[#323234] flex items-center justify-center">
+                    <item.icon className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{item.label}</p>
+                    <p className="text-[15px] font-medium text-gray-900 dark:text-white mt-0.5">{item.value}</p>
+                  </div>
+                  <button className="text-teal-600 text-sm font-medium">Edit</button>
+                </div>
+              ))}
             </div>
-
-            <button className="w-full py-3 px-4 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-gray-200 dark:border-[#3a3a3c] text-gray-900 dark:text-white font-medium">
-              Edit Profile
-            </button>
           </div>
         )
     }
@@ -541,29 +620,26 @@ function AndroidSettings() {
 
                       return (
                         <div key={item.id}>
-                          <button
-                            onClick={() => setActivePanel(item.id)}
-                            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#3a3a3c] transition-colors"
-                          >
-                            <div className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', item.iconBg)}>
-                              <Icon className={cn('w-[18px] h-[18px]', item.iconColor)} />
-                            </div>
+                          {item.toggle ? (
+                            <div className="w-full flex items-center gap-3 px-4 py-3.5 transition-colors">
+                              <div className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', item.iconBg)}>
+                                <Icon className={cn('w-[18px] h-[18px]', item.iconColor)} />
+                              </div>
 
-                            <div className="flex-1 text-left min-w-0">
-                              <p className="text-[15px] text-gray-900 dark:text-white font-normal leading-snug">
-                                {item.label}
-                              </p>
-                              {item.description && (
-                                <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5 truncate">
-                                  {item.description}
+                              <div className="flex-1 text-left min-w-0">
+                                <p className="text-[15px] text-gray-900 dark:text-white font-normal leading-snug">
+                                  {item.label}
                                 </p>
-                              )}
-                              {item.value && (
-                                <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5">{item.value}</p>
-                              )}
-                            </div>
+                                {item.description && (
+                                  <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5 truncate">
+                                    {item.description}
+                                  </p>
+                                )}
+                                {item.value && (
+                                  <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5">{item.value}</p>
+                                )}
+                              </div>
 
-                            {item.toggle ? (
                               <div className="flex items-center gap-2 shrink-0">
                                 {theme === 'dark'
                                   ? <Moon className="w-4 h-4 text-gray-400" />
@@ -574,10 +650,33 @@ function AndroidSettings() {
                                   onCheckedChange={c => setTheme(c ? 'dark' : 'light')}
                                 />
                               </div>
-                            ) : (
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setActivePanel(item.id)}
+                              className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 dark:active:bg-[#3a3a3c] transition-colors"
+                            >
+                              <div className={cn('w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0', item.iconBg)}>
+                                <Icon className={cn('w-[18px] h-[18px]', item.iconColor)} />
+                              </div>
+
+                              <div className="flex-1 text-left min-w-0">
+                                <p className="text-[15px] text-gray-900 dark:text-white font-normal leading-snug">
+                                  {item.label}
+                                </p>
+                                {item.description && (
+                                  <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5 truncate">
+                                    {item.description}
+                                  </p>
+                                )}
+                                {item.value && (
+                                  <p className="text-xs text-gray-400 dark:text-[#8e8e93] mt-0.5">{item.value}</p>
+                                )}
+                              </div>
+
                               <ChevronRight className="w-4 h-4 text-gray-300 dark:text-[#636366] shrink-0" />
-                            )}
-                          </button>
+                            </button>
+                          )}
 
                           {!isLast && (
                             <div className="ml-[52px] mr-0 h-px bg-gray-100 dark:bg-[#3a3a3c]" />
@@ -639,6 +738,45 @@ interface DetailPanelProps {
 }
 
 function DetailPanel({ id, theme, setTheme, currentUser }: DetailPanelProps) {
+  const { setCurrentUser, textSize, setTextSize } = useChatStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !currentUser) return
+
+    setIsUploading(true)
+    const reader = new FileReader()
+    reader.onload = async (ev) => {
+      const base64Image = ev.target?.result as string
+      if (!base64Image) {
+        setIsUploading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(`/api/users/${currentUser.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ avatar: base64Image }),
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          setCurrentUser(data.user)
+        } else {
+          console.error('Failed to update avatar')
+        }
+      } catch (error) {
+        console.error('Error updating avatar:', error)
+      } finally {
+        setIsUploading(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
   const allItems = sections.flatMap(s => s.items)
   const item = allItems.find(i => i.id === id)
   if (!item) return null
@@ -755,10 +893,10 @@ function DetailPanel({ id, theme, setTheme, currentUser }: DetailPanelProps) {
             <div>
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Font Size</h3>
               <div className="space-y-2">
-                {['Small', 'Medium', 'Large'].map(size => (
+                {(['small', 'medium', 'large'] as const).map(size => (
                   <label key={size} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-slate-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors">
-                    <input type="radio" name="fontSize" defaultChecked={size === 'Medium'} className="w-4 h-4" />
-                    <span className={cn('font-medium text-gray-900 dark:text-white', size === 'Small' ? 'text-sm' : size === 'Large' ? 'text-lg' : 'text-base')}>{size}</span>
+                    <input type="radio" name="fontSize" checked={textSize === size} onChange={() => setTextSize(size)} className="w-4 h-4" />
+                    <span className={cn('font-medium text-gray-900 dark:text-white capitalize', size === 'small' ? 'text-sm' : size === 'large' ? 'text-lg' : 'text-base')}>{size}</span>
                   </label>
                 ))}
               </div>
@@ -860,21 +998,60 @@ function DetailPanel({ id, theme, setTheme, currentUser }: DetailPanelProps) {
       case 'profile':
       default:
         return (
-          <div className="space-y-3">
-            {[
-              { label: 'Name', value: currentUser?.name || 'User' },
-              { label: 'Email', value: currentUser?.email || 'Not set' },
-              { label: 'Phone', value: currentUser?.phone || 'Not set' },
-              { label: 'Username', value: `@${currentUser?.username || 'username'}` },
-            ].map((item, i) => (
-              <div key={i} className="p-4 rounded-xl border border-gray-200 dark:border-slate-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">{item.label}</p>
-                <p className="text-sm font-medium text-gray-900 dark:text-white mt-1">{item.value}</p>
-              </div>
-            ))}
+          <div className="space-y-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center py-6 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm">
+              <div className="relative group">
+                <Avatar className="w-32 h-32 ring-4 ring-teal-500/20">
+                  <AvatarImage src={currentUser?.avatar || undefined} />
+                  <AvatarFallback className="bg-teal-600 text-white text-4xl font-bold">
+                    {currentUser ? getInitials(currentUser.name) : 'U'}
+                  </AvatarFallback>
+                </Avatar>
 
-            <button className="w-full mt-4 py-3 px-4 rounded-xl bg-teal-600 text-white font-medium hover:bg-teal-700 transition-colors">
-              Edit Profile
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={cn(
+                    "absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity",
+                    isUploading && "opacity-100 flex"
+                  )}
+                >
+                  <div className="bg-white dark:bg-[#323234] p-3 rounded-full shadow-lg">
+                    <Camera className={cn("w-6 h-6 text-teal-600", isUploading && "animate-pulse")} />
+                  </div>
+                </button>
+              </div>
+              <div className="mt-4 text-center">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{currentUser?.name || 'User'}</h3>
+                <p className="text-teal-600 dark:text-teal-400 font-medium">@{currentUser?.username || 'username'}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { label: 'Name', value: currentUser?.name || 'User' },
+                { label: 'Email', value: currentUser?.email || 'Not set' },
+                { label: 'Phone', value: currentUser?.phone || 'Not set' },
+                { label: 'Username', value: `@${currentUser?.username || 'username'}` },
+              ].map((item, i) => (
+                <div key={i} className="p-4 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+                  <p className="text-xs text-gray-400 dark:text-gray-500 font-medium uppercase tracking-wider">{item.label}</p>
+                  <p className="text-[15px] font-medium text-gray-900 dark:text-white mt-1.5">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <button className="w-full mt-2 py-3.5 px-4 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700 transition-all shadow-md shadow-teal-500/20">
+              Edit Account Info
             </button>
           </div>
         )

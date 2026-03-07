@@ -140,7 +140,7 @@ export default function WhatsAppChat() {
               >
                 {menuItems.map((item, index) => (
                   <button
-                    key={index}
+                    key={`menu-${item.label}-${index}`}
                     className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors ${
                       item.danger ? 'text-red-500' : 'text-white'
                     }`}

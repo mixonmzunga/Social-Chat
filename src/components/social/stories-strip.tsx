@@ -64,8 +64,8 @@ export function StoriesStrip() {
       <div className="px-4 py-3 bg-white dark:bg-slate-800 border-b border-gray-100 dark:border-slate-700 relative">
         {/* Section Header */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stories</h2>
-          <button className="text-xs text-violet-600 dark:text-violet-400 font-medium">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Stories</h2>
+          <button className="text-sm text-violet-600 dark:text-violet-400 font-medium">
             See All
           </button>
         </div>
@@ -99,21 +99,19 @@ export function StoriesStrip() {
                 {/* Story Ring */}
                 <div className="relative">
                   <div
-                    className={`w-16 h-16 rounded-full p-[2px] ${
-                      story.hasNew
+                    className={`w-16 h-16 rounded-full p-[2px] ${story.hasNew
                         ? 'bg-gradient-to-tr from-violet-500 via-pink-500 to-orange-400'
                         : 'bg-gray-200 dark:bg-slate-600'
-                    }`}
+                      }`}
                   >
                     <div className="w-full h-full rounded-full bg-white dark:bg-slate-800 p-[2px]">
                       <Avatar className="w-full h-full">
                         <AvatarImage src={story.avatar || undefined} />
                         <AvatarFallback
-                          className={`text-sm font-semibold ${
-                            story.isOwn
+                          className={`text-sm font-semibold ${story.isOwn
                               ? 'bg-gradient-to-br from-violet-500 to-pink-500 text-white'
                               : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300'
-                          }`}
+                            }`}
                         >
                           {story.isOwn ? <Plus className="w-5 h-5" /> : getInitials(story.name)}
                         </AvatarFallback>
@@ -129,8 +127,7 @@ export function StoriesStrip() {
                   )}
                 </div>
 
-                {/* Name */}
-                <span className="text-xs text-gray-600 dark:text-gray-400 truncate w-16 text-center">
+                <span className="text-sm text-gray-600 dark:text-gray-400 truncate w-16 text-center">
                   {story.name}
                 </span>
               </motion.button>
@@ -164,10 +161,10 @@ export function StoriesStrip() {
                 <motion.div
                   className="h-full bg-white"
                   initial={{ width: '0%' }}
-                  animate={{ 
+                  animate={{
                     width: isPaused ? `${progress}%` : '100%',
                   }}
-                  transition={{ 
+                  transition={{
                     duration: isPaused ? 0 : 5,
                     ease: 'linear'
                   }}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
+import {
   Search, Plus, Phone, MoreVertical,
   PhoneIncoming, PhoneOutgoing, PhoneMissed,
   Video, MessageCircle, Users, X, Check, CheckCheck
@@ -75,12 +75,12 @@ export function AndroidMessagesLayout() {
   // Filter conversations
   const filteredConversations = useMemo(() => {
     return conversations.filter(conv => {
-      const matchesSearch = !searchQuery || 
+      const matchesSearch = !searchQuery ||
         conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         conv.otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase())
-      
+
       const matchesTab = activeTab === 'groups' ? conv.type === 'group' : conv.type === 'private'
-      
+
       return matchesSearch && matchesTab
     })
   }, [conversations, searchQuery, activeTab])
@@ -101,7 +101,7 @@ export function AndroidMessagesLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900">
       {/* Header - Elegant Purple to Pink Gradient */}
-      <header 
+      <header
         className="sticky top-0 z-20 bg-gradient-to-br from-violet-600 via-purple-600 to-pink-500 shadow-lg shadow-violet-500/20"
         style={{ paddingTop: 'env(safe-area-inset-top)' }}
       >
@@ -167,11 +167,11 @@ export function AndroidMessagesLayout() {
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   const isActive = activeTab === tab.id
-                  const count = tab.id === 'chats' 
+                  const count = tab.id === 'chats'
                     ? conversations.filter(c => c.type === 'private').length
                     : tab.id === 'groups'
-                    ? conversations.filter(c => c.type === 'group').length
-                    : calls.length
+                      ? conversations.filter(c => c.type === 'group').length
+                      : calls.length
 
                   return (
                     <button
@@ -242,8 +242,8 @@ export function AndroidMessagesLayout() {
               exit={{ opacity: 0 }}
             >
               {filteredConversations.length === 0 ? (
-                <EmptyState 
-                  type={activeTab} 
+                <EmptyState
+                  type={activeTab}
                   getInitials={getInitials}
                 />
               ) : (
@@ -359,7 +359,7 @@ function ConversationItem({
             {conversation.lastMessage && (
               <span className="flex-shrink-0">
                 {conversation.lastMessage.status === 'read' ? (
-                  <CheckCheck className="w-4 h-4 text-violet-500" />
+                  <CheckCheck className="w-4 h-4 text-blue-500" />
                 ) : conversation.lastMessage.status === 'delivered' ? (
                   <CheckCheck className="w-4 h-4 text-gray-400" />
                 ) : (
@@ -461,7 +461,7 @@ function CallItem({
         <span className="text-xs text-gray-400 dark:text-gray-500">
           {formatTime(call.timestamp)}
         </span>
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           className={cn(
@@ -514,7 +514,7 @@ function EmptyState({
   const { icon: Icon, title, subtitle, gradient } = config[type]
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center py-20 px-6 text-center"

@@ -12,27 +12,27 @@ const USER_STATUS_INTERVAL = 3000 // 3 seconds for user status
 // Play notification sound using Web Audio API
 const playNotificationSound = () => {
   if (typeof window === 'undefined') return
-  
+
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    
+
     // Create a pleasant "ding" sound
     const oscillator = audioContext.createOscillator()
     const gainNode = audioContext.createGain()
-    
+
     oscillator.connect(gainNode)
     gainNode.connect(audioContext.destination)
-    
+
     // Configure the sound - a pleasant chime
     oscillator.frequency.setValueAtTime(800, audioContext.currentTime) // Start frequency
     oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.1) // Slide down
     oscillator.type = 'sine' // Smooth sine wave
-    
+
     // Configure volume envelope
     gainNode.gain.setValueAtTime(0, audioContext.currentTime)
     gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.01) // Attack
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3) // Decay
-    
+
     // Play the sound
     oscillator.start(audioContext.currentTime)
     oscillator.stop(audioContext.currentTime + 0.3)
@@ -44,26 +44,26 @@ const playNotificationSound = () => {
 // Play sent message sound - a soft "whoosh" click
 const playSentSound = () => {
   if (typeof window === 'undefined') return
-  
+
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    
+
     const oscillator = audioContext.createOscillator()
     const gainNode = audioContext.createGain()
-    
+
     oscillator.connect(gainNode)
     gainNode.connect(audioContext.destination)
-    
+
     // Soft click sound
     oscillator.frequency.setValueAtTime(1200, audioContext.currentTime)
     oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.05)
     oscillator.type = 'sine'
-    
+
     // Quick fade
     gainNode.gain.setValueAtTime(0, audioContext.currentTime)
     gainNode.gain.linearRampToValueAtTime(0.15, audioContext.currentTime + 0.005)
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.08)
-    
+
     oscillator.start(audioContext.currentTime)
     oscillator.stop(audioContext.currentTime + 0.08)
   } catch (error) {
@@ -78,7 +78,9 @@ export function useSocket() {
   const messagePollRef = useRef<NodeJS.Timeout | null>(null)
   const typingPollRef = useRef<NodeJS.Timeout | null>(null)
   const lastMessageTimeRef = useRef<string>(new Date().toISOString())
-  
+  const pollingEnabledRef = useRef(true) // Circuit breaker for polling
+  const consecutiveErrorsRef = useRef(0)
+
   const {
     currentUser,
     selectedConversation,
@@ -174,42 +176,142 @@ export function useSocket() {
 
     const pollMessages = async () => {
       try {
+        // Ensure we have required data before making the request
+        if (!selectedConversation?.id || !currentUser?.id) {
+          console.warn('Missing conversationId or userId for message polling')
+          return
+        }
+
         // Fetch messages newer than the last one we saw
         const response = await fetch(
           `/api/messages?conversationId=${selectedConversation.id}&limit=50&after=${lastMessageTimeRef.current}`
         )
-        
-        if (response.ok) {
-          const data = await response.json()
-          const messages: Message[] = (data.messages || []).map((m: any) => ({
-            ...m,
-            createdAt: new Date(m.createdAt)
-          }))
-          
-          // Filter out our own messages and already seen messages
-          const newMessages = messages.filter(
-            (m: Message) => m.senderId !== currentUser?.id && 
+
+        if (!response.ok) {
+          console.error('Message polling failed:', response.status, response.statusText)
+          return
+        }
+
+        const data = await response.json()
+        const messages: Message[] = (data.messages || []).map((m: any) => ({
+          ...m,
+          createdAt: new Date(m.createdAt)
+        }))
+
+        // Filter out our own messages and already seen messages
+        const newMessages = messages.filter(
+          (m: Message) => m.senderId !== currentUser.id &&
             new Date(m.createdAt).getTime() > new Date(lastMessageTimeRef.current).getTime()
-          )
-          
-          // Add new messages and play sound
-          newMessages.forEach((msg: Message) => {
-            addMessage(msg)
-            // Play notification sound for messages from others
-            playNotificationSound()
-          })
-          
-          // Update last message time
-          if (messages.length > 0) {
-            const latestTime = messages.reduce((latest: string, msg: Message) => {
-              const msgTime = new Date(msg.createdAt).toISOString()
-              return msgTime > latest ? msgTime : latest
-            }, lastMessageTimeRef.current)
-            lastMessageTimeRef.current = latestTime
-          }
+        )
+
+        // Add new messages and play sound
+        newMessages.forEach((msg: Message) => {
+          addMessage(msg)
+          // Play notification sound for messages from others
+          playNotificationSound()
+        })
+
+        // Update last message time
+        if (messages.length > 0) {
+          const latestTime = messages.reduce((latest: string, msg: Message) => {
+            const msgTime = new Date(msg.createdAt).toISOString()
+            return msgTime > latest ? msgTime : latest
+          }, lastMessageTimeRef.current)
+          lastMessageTimeRef.current = latestTime
         }
       } catch (error) {
         console.error('Message polling error:', error)
+        // Don't throw the error, just log it to prevent unhandled rejections
+      }
+    }
+
+    // Also poll for status updates for existing messages
+    const pollMessageStatuses = async () => {
+      // Skip polling if circuit breaker is tripped
+      if (!pollingEnabledRef.current) {
+        console.log('Polling disabled due to consecutive errors')
+        return
+      }
+
+      try {
+        // Ensure we have both conversationId and userId before making the request
+        if (!selectedConversation?.id || !currentUser?.id) {
+          console.warn('Missing conversationId or userId for status polling', {
+            selectedConversation: selectedConversation?.id,
+            currentUser: currentUser?.id
+          })
+          return
+        }
+
+        console.log('Polling message statuses for conversation:', selectedConversation.id)
+        
+        const response = await fetch(
+          `/api/messages?conversationId=${selectedConversation.id}&userId=${currentUser.id}&limit=50`,
+          {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache'
+            }
+          }
+        )
+        
+        console.log('Status polling response:', response.status, response.statusText)
+        
+        if (!response.ok) {
+          console.error('Status polling failed:', response.status, response.statusText)
+          // Try to get more error details
+          try {
+            const errorText = await response.text()
+            console.error('Error response body:', errorText)
+          } catch (e) {
+            console.error('Could not read error response body')
+          }
+          
+          // Increment error count
+          consecutiveErrorsRef.current++
+          if (consecutiveErrorsRef.current >= 5) {
+            pollingEnabledRef.current = false
+            console.error('Too many consecutive errors, disabling polling temporarily')
+            // Re-enable polling after 30 seconds
+            setTimeout(() => {
+              pollingEnabledRef.current = true
+              consecutiveErrorsRef.current = 0
+              console.log('Re-enabling polling after cooldown')
+            }, 30000)
+          }
+          return
+        }
+
+        const data = await response.json()
+        console.log('Status polling data received:', data)
+        const serverMessages = data.messages || []
+
+        // Reset error count on success
+        consecutiveErrorsRef.current = 0
+
+        // Update status of our messages if they changed on server
+        serverMessages.forEach((serverMsg: any) => {
+          const localMsg = useChatStore.getState().messages.find(m => m.id === serverMsg.id)
+          if (localMsg && localMsg.status !== serverMsg.status) {
+            console.log('Updating message status:', localMsg.id, localMsg.status, '->', serverMsg.status)
+            useChatStore.getState().updateMessageStatus(serverMsg.id, serverMsg.status)
+          }
+        })
+      } catch (error) {
+        console.error('Status polling error:', error)
+        consecutiveErrorsRef.current++
+        
+        if (consecutiveErrorsRef.current >= 5) {
+          pollingEnabledRef.current = false
+          console.error('Too many consecutive errors, disabling polling temporarily')
+          // Re-enable polling after 30 seconds
+          setTimeout(() => {
+            pollingEnabledRef.current = true
+            consecutiveErrorsRef.current = 0
+            console.log('Re-enabling polling after cooldown')
+          }, 30000)
+        }
       }
     }
 
@@ -217,10 +319,42 @@ export function useSocket() {
     lastMessageTimeRef.current = new Date().toISOString()
 
     // Initial poll
-    pollMessages()
+    const initialPoll = async () => {
+      try {
+        await Promise.all([
+          pollMessages(),
+          pollMessageStatuses()
+        ])
+      } catch (error) {
+        console.error('Initial message polling error:', error)
+      }
+    }
+    initialPoll()
 
-    // Set up message polling interval
-    messagePollRef.current = setInterval(pollMessages, MESSAGE_POLL_INTERVAL)
+    // Set up message polling interval with retry logic
+    let retryCount = 0
+    const maxRetries = 3
+    
+    messagePollRef.current = setInterval(async () => {
+      try {
+        await Promise.all([
+          pollMessages(),
+          pollMessageStatuses()
+        ])
+        retryCount = 0 // Reset retry count on success
+      } catch (error) {
+        console.error('Message polling interval error:', error)
+        retryCount++
+        
+        if (retryCount >= maxRetries) {
+          console.error('Max retries reached, stopping polling')
+          if (messagePollRef.current) {
+            clearInterval(messagePollRef.current)
+            messagePollRef.current = null
+          }
+        }
+      }
+    }, MESSAGE_POLL_INTERVAL)
 
     return () => {
       if (messagePollRef.current) {
@@ -229,6 +363,19 @@ export function useSocket() {
     }
   }, [selectedConversation, currentUser?.id, addMessage])
 
+  // Mark messages as read
+  const markAsRead = useCallback(async (conversationId: string, userId: string) => {
+    try {
+      await fetch('/api/messages/read', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, userId })
+      })
+    } catch (error) {
+      console.error('Mark as read error:', error)
+    }
+  }, [])
+
   // Send message via API
   const sendMessage = useCallback(async (data: {
     conversationId: string
@@ -236,10 +383,23 @@ export function useSocket() {
     senderName: string
     senderAvatar?: string
     content: string
-    type?: 'text' | 'image' | 'file' | 'audio'
+    type?: 'text' | 'image' | 'file' | 'audio' | 'video' | 'location' | 'contact'
     fileUrl?: string
     fileName?: string
     fileSize?: number
+    fileMimeType?: string
+    location?: {
+      latitude: number
+      longitude: number
+      address?: string
+      name?: string
+    }
+    contact?: {
+      name: string
+      phone?: string
+      email?: string
+      avatar?: string
+    }
   }) => {
     try {
       const response = await fetch('/api/messages', {
@@ -247,7 +407,7 @@ export function useSocket() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       })
-      
+
       if (response.ok) {
         // Update last message time
         lastMessageTimeRef.current = new Date().toISOString()
@@ -256,6 +416,19 @@ export function useSocket() {
       }
     } catch (error) {
       console.error('Send message error:', error)
+    }
+  }, [])
+
+  // Delete message via API
+  const deleteMessageApi = useCallback(async (messageId: string) => {
+    try {
+      await fetch('/api/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messageId })
+      })
+    } catch (error) {
+      console.error('Delete message error:', error)
     }
   }, [])
 
@@ -295,7 +468,7 @@ export function useSocket() {
         const response = await fetch(
           `/api/typing?conversationId=${selectedConversation.id}&excludeUserId=${currentUser.id}`
         )
-        
+
         if (response.ok) {
           const data = await response.json()
           setTypingUsers(data.typingUsers || [])
@@ -331,8 +504,10 @@ export function useSocket() {
   return {
     isConnected,
     sendMessage,
+    deleteMessageApi,
     startTyping,
     stopTyping,
+    markAsRead,
     setUserOffline
   }
 }

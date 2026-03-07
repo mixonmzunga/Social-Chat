@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { 
+import {
   TrendingUp, Hash, UserPlus, Check, MoreHorizontal,
   ExternalLink, Flame
 } from 'lucide-react'
@@ -59,11 +59,11 @@ export function DesktopRightSidebar() {
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{topic.category}</p>
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm mt-0.5 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{topic.category}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white text-base mt-0.5 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
                       {topic.hashtag}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                       {topic.posts} posts
                     </p>
                   </div>
@@ -75,7 +75,7 @@ export function DesktopRightSidebar() {
             ))}
           </div>
 
-          <button className="mt-3 text-sm text-violet-600 dark:text-violet-400 font-medium hover:underline">
+          <button className="mt-3 text-base text-violet-600 dark:text-violet-400 font-medium hover:underline">
             Show more
           </button>
         </section>
@@ -104,7 +104,7 @@ export function DesktopRightSidebar() {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1">
-                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">
+                    <p className="font-semibold text-gray-900 dark:text-white text-base truncate">
                       {user.name}
                     </p>
                     {user.isVerified && (
@@ -113,7 +113,7 @@ export function DesktopRightSidebar() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                     {user.username}
                   </p>
                 </div>
@@ -133,7 +133,7 @@ export function DesktopRightSidebar() {
             ))}
           </div>
 
-          <button className="mt-3 text-sm text-violet-600 dark:text-violet-400 font-medium hover:underline">
+          <button className="mt-3 text-base text-violet-600 dark:text-violet-400 font-medium hover:underline">
             Show more
           </button>
         </section>
@@ -146,7 +146,7 @@ export function DesktopRightSidebar() {
               <a
                 key={link}
                 href="#"
-                className="text-xs text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:underline"
+                className="text-sm text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 hover:underline"
               >
                 {link}
               </a>
@@ -160,7 +160,7 @@ export function DesktopRightSidebar() {
             <Flame className="w-5 h-5 text-orange-500" />
             <h2 className="font-semibold text-gray-900 dark:text-white">Featured</h2>
           </div>
-          <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+          <p className="text-base text-gray-600 dark:text-gray-300 mb-3">
             Discover amazing content from creators around the world
           </p>
           <Button
@@ -175,7 +175,7 @@ export function DesktopRightSidebar() {
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-100 dark:border-slate-800">
-        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center">
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center">
           © 2024 LoyalChat. All rights reserved.
         </p>
       </div>

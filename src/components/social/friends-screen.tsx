@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
+import {
   Search, Plus, UserPlus, Users, Check,
   MoreVertical, ChevronRight
 } from 'lucide-react'
@@ -10,8 +10,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useChatStore } from '@/store/chat-store'
+import { useToast } from '@/hooks/use-toast'
+import { Loader2 } from 'lucide-react'
 
 type Tab = 'suggestions' | 'friends' | 'requests'
+
 
 interface FriendUser {
   id: string
@@ -23,50 +27,95 @@ interface FriendUser {
   mutualFriends?: number
 }
 
-const sampleSuggestions: FriendUser[] = [
-  { id: '1', name: 'Madalitso Phiri', username: '@madalitso_p', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face', isOnline: true, isVerified: true, mutualFriends: 12 },
-  { id: '2', name: 'Chimwemwe Kaunda', username: '@chimwemwe_k', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&crop=face', isOnline: false, isVerified: false, mutualFriends: 8 },
-  { id: '3', name: 'Tadala Msiska', username: '@tadala_m', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face', isOnline: true, isVerified: false, mutualFriends: 5 },
-]
-
-const sampleFriends: FriendUser[] = [
-  { id: '1', name: 'Chikondi Banda', username: '@chikondi_b', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face', isOnline: true, isVerified: true },
-  { id: '2', name: 'Thandiwe Gondwe', username: '@thandiwe_g', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=150&h=150&fit=crop&crop=face', isOnline: false, isVerified: false },
-  { id: '3', name: 'Kondwani Nkhoma', username: '@kondwani_n', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&h=150&fit=crop&crop=face', isOnline: true, isVerified: false },
-]
-
-const sampleRequests: FriendUser[] = [
-  { id: '1', name: 'Mphatso Jere', username: '@mphatso_j', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face', isOnline: true, isVerified: false, mutualFriends: 3 },
-  { id: '2', name: 'Zione Kalua', username: '@zione_k', avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=150&h=150&fit=crop&crop=face', isOnline: false, isVerified: true, mutualFriends: 7 },
-]
+interface FriendRequest {
+  id: string
+  sender: FriendUser
+}
 
 export function FriendsScreen() {
+  const { currentUser } = useChatStore()
   const [activeTab, setActiveTab] = useState<Tab>('suggestions')
   const [searchQuery, setSearchQuery] = useState('')
   const [followStates, setFollowStates] = useState<Record<string, boolean>>({})
+
+  const [suggestions, setSuggestions] = useState<FriendUser[]>([])
+  const [friends, setFriends] = useState<FriendUser[]>([])
+  const [requests, setRequests] = useState<FriendRequest[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchData = async () => {
+    if (!currentUser?.id) return
+    setIsLoading(true)
+    try {
+      const [sugRes, friRes, reqRes] = await Promise.all([
+        fetch(`/api/friends/suggestions?userId=${currentUser.id}`),
+        fetch(`/api/friends/list?userId=${currentUser.id}`),
+        fetch(`/api/friends/request?userId=${currentUser.id}`)
+      ])
+
+      const sugData = await sugRes.json()
+      const friData = await friRes.json()
+      const reqData = await reqRes.json()
+
+      setSuggestions(sugData.users || [])
+      setFriends(friData.friends || [])
+      setRequests(reqData.requests || [])
+    } catch (error) {
+      console.error('Failed to fetch friends data:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchData()
+  }, [currentUser?.id])
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
 
-  const handleFollow = (id: string) => {
-    setFollowStates(prev => ({ ...prev, [id]: !prev[id] }))
+  const handleFollow = async (receiverId: string) => {
+    if (!currentUser?.id) return
+    setFollowStates(prev => ({ ...prev, [receiverId]: true }))
+    try {
+      await fetch('/api/friends/request', {
+        method: 'POST',
+        body: JSON.stringify({ senderId: currentUser.id, receiverId })
+      })
+      // Optionally refresh suggestions or show "Request Sent"
+    } catch (error) {
+      console.error('Follow failed:', error)
+      setFollowStates(prev => ({ ...prev, [receiverId]: false }))
+    }
+  }
+
+  const handleRequestAction = async (requestId: string, action: 'accept' | 'decline') => {
+    try {
+      await fetch('/api/friends/accept', {
+        method: 'POST',
+        body: JSON.stringify({ requestId, action })
+      })
+      fetchData() // Refresh everything
+    } catch (error) {
+      console.error(`${action} request failed:`, error)
+    }
   }
 
   const tabs: { id: Tab; label: string; count?: number }[] = [
-    { id: 'suggestions', label: 'Suggestions', count: 3 },
-    { id: 'friends', label: 'Friends', count: 24 },
-    { id: 'requests', label: 'Requests', count: 2 },
+    { id: 'suggestions', label: 'Suggestions', count: suggestions.length },
+    { id: 'friends', label: 'Friends', count: friends.length },
+    { id: 'requests', label: 'Requests', count: requests.length },
   ]
 
   const getCurrentData = () => {
     switch (activeTab) {
       case 'suggestions':
-        return sampleSuggestions
+        return suggestions
       case 'friends':
-        return sampleFriends
+        return friends
       case 'requests':
-        return sampleRequests
+        return [] // Handled separately due to structure
     }
   }
 
@@ -229,9 +278,9 @@ export function FriendsScreen() {
 
         {activeTab === 'requests' && (
           <div className="space-y-3">
-            {currentData.map((user, index) => (
+            {requests.map((request, index) => (
               <motion.div
-                key={user.id}
+                key={request.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
@@ -239,26 +288,38 @@ export function FriendsScreen() {
               >
                 <div className="flex items-center gap-3">
                   <Avatar className="w-12 h-12">
-                    <AvatarImage src={user.avatar || undefined} />
+                    <AvatarImage src={request.sender.avatar || undefined} />
                     <AvatarFallback className="bg-gradient-to-br from-orange-500 to-amber-500 text-white font-semibold">
-                      {getInitials(user.name)}
+                      {getInitials(request.sender.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1">
-                    <p className="font-semibold text-gray-900 dark:text-white">{user.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{user.mutualFriends} mutual friends</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">{request.sender.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">{request.sender.username}</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white">
+                    <Button
+                      size="sm"
+                      onClick={() => handleRequestAction(request.id, 'accept')}
+                      className="rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white"
+                    >
                       Accept
                     </Button>
-                    <Button size="sm" variant="outline" className="rounded-xl">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRequestAction(request.id, 'decline')}
+                      className="rounded-xl"
+                    >
                       Decline
                     </Button>
                   </div>
                 </div>
               </motion.div>
             ))}
+            {requests.length === 0 && (
+              <div className="text-center py-10 text-gray-400">No pending requests</div>
+            )}
           </div>
         )}
       </div>

@@ -1,8 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { ChevronRight, Palette, Music, ChefHat, Mountain, Gamepad2, BookOpen } from 'lucide-react'
+import { ChevronRight, Palette, Music, ChefHat, Mountain, BookOpen } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useFeedStore } from '@/store/feed-store'
 
 interface Category {
   id: string
@@ -23,6 +24,16 @@ const categories: Category[] = [
 ]
 
 export function Recommendations() {
+  const { setCategory, activeCategory, activeFilter } = useFeedStore()
+
+  const handleCategoryClick = (name: string) => {
+    if (activeFilter === 'category' && activeCategory === name) {
+      setCategory(null)
+    } else {
+      setCategory(name)
+    }
+  }
+
   return (
     <section className="px-4 py-5">
       <div className="flex items-center justify-between mb-4">
@@ -30,15 +41,18 @@ export function Recommendations() {
           <h2 className="font-bold text-gray-900 dark:text-white text-lg">Discover</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">Explore your interests</p>
         </div>
-        <button className="text-sm text-violet-600 dark:text-violet-400 font-semibold flex items-center gap-1 hover:text-violet-700 transition-colors">
-          See All
-          <ChevronRight className="w-4 h-4" />
+        <button
+          onClick={() => setCategory(null)}
+          className="text-sm text-violet-600 dark:text-violet-400 font-semibold flex items-center gap-1 hover:text-violet-700 transition-colors"
+        >
+          See All <ChevronRight className="w-4 h-4" />
         </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
         {categories.map((category, index) => {
           const Icon = category.icon
+          const isActive = activeFilter === 'category' && activeCategory === category.name
           return (
             <motion.button
               key={category.id}
@@ -47,9 +61,11 @@ export function Recommendations() {
               transition={{ delay: index * 0.05 }}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              onClick={() => handleCategoryClick(category.name)}
               className={cn(
-                "relative p-4 rounded-2xl text-left overflow-hidden group transition-all",
-                category.bgColor
+                'relative p-4 rounded-2xl text-left overflow-hidden group transition-all border-2',
+                category.bgColor,
+                isActive ? 'border-violet-500 shadow-lg shadow-violet-500/20' : 'border-transparent'
               )}
             >
               {/* Background Pattern */}
@@ -57,30 +73,54 @@ export function Recommendations() {
                 <Icon className="w-16 h-16" />
               </div>
 
-              {/* Icon */}
+              {/* Active indicator */}
+              {isActive && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute top-2 right-2 w-5 h-5 bg-violet-500 rounded-full flex items-center justify-center"
+                >
+                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </motion.div>
+              )}
+
               <div className={cn(
-                "w-10 h-10 rounded-xl flex items-center justify-center mb-3",
-                "bg-white dark:bg-slate-800 shadow-sm"
+                'w-10 h-10 rounded-xl flex items-center justify-center mb-3',
+                'bg-white dark:bg-slate-800 shadow-sm'
               )}>
-                <Icon className={cn("w-5 h-5", category.color)} />
+                <Icon className={cn('w-5 h-5', category.color)} />
               </div>
 
-              {/* Content */}
-              <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">
-                {category.name}
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {category.members} members
-              </p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm mb-0.5">{category.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{category.members} members</p>
 
-              {/* Hover Indicator */}
               <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <ChevronRight className={cn("w-5 h-5", category.color)} />
+                <ChevronRight className={cn('w-5 h-5', category.color)} />
               </div>
             </motion.button>
           )
         })}
       </div>
+
+      {activeFilter === 'category' && activeCategory && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-3 flex items-center justify-between p-3 bg-violet-50 dark:bg-violet-900/20 rounded-2xl"
+        >
+          <p className="text-sm text-violet-700 dark:text-violet-300 font-medium">
+            Showing posts from <strong>{activeCategory}</strong>
+          </p>
+          <button
+            onClick={() => setCategory(null)}
+            className="text-xs text-violet-500 font-semibold hover:text-violet-700 transition-colors"
+          >
+            Clear filter
+          </button>
+        </motion.div>
+      )}
     </section>
   )
 }

@@ -30,6 +30,43 @@ model User {
   groups           GroupMember[]
   callParticipants CallParticipant[]
   initiatedCalls   Call[]
+  posts            Post[]
+  postComments     PostComment[]
+  stories          Story[]
+  
+  // social relations
+  sentRequests     FriendRequest[] @relation("SentRequests")
+  receivedRequests FriendRequest[] @relation("ReceivedRequests")
+  friendships1     Friendship[]    @relation("Friendship1")
+  friendships2     Friendship[]    @relation("Friendship2")
+  
+  // notifications
+  notifications    Notification[]
+}
+
+model FriendRequest {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     String   @default("pending") // pending, accepted, declined
+  createdAt  DateTime @default(now())
+
+  sender     User     @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  user1Id   String
+  user2Id   String
+  createdAt DateTime @default(now())
+
+  user1     User     @relation("Friendship1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2     User     @relation("Friendship2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+  @@unique([user1Id, user2Id])
 }
 
 model Conversation {
@@ -94,10 +131,12 @@ model Message {
   conversationId String
   senderId       String
   content        String
-  type           String   @default("text") // text, image, file, audio
+  type           String   @default("text") // text, image, file, audio, video, location, contact
   fileUrl        String?
   fileName       String?
   fileSize       Int?
+  locationData   String?  // JSON: { latitude, longitude, address?, name? }
+  contactData    String?  // JSON: { name, phone?, email?, avatar? }
   status         String   @default("sent") // sent, delivered, read
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -149,4 +188,64 @@ model CallParticipant {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@unique([callId, userId])
+}
+
+model Post {
+  id        String    @id @default(cuid())
+  content   String
+  images    String?   // JSON stringified array of base64/URLs
+  videos    String?   // JSON stringified array of URLs
+  likes     Int       @default(0)
+  shares    Int       @default(0)
+  views     Int       @default(0)
+  category  String?
+  bgColor   String?
+  authorId  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  PostComment[]
+}
+
+model PostComment {
+  id             String   @id @default(cuid())
+  postId         String
+  authorId       String
+  content        String
+  likes          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  post           Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author         User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // image, text
+  content   String   // base64 or URL
+  bgColor   String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String   // The user receiving the notification
+  type        String   // like, comment, follow, share
+  actorId     String   // The user who performed the action
+  actorName   String
+  actorAvatar String?
+  postId      String?  // Optional: associated post
+  postContent String?  // Snippet of the post for context
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

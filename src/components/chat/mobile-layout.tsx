@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import EmojiPicker, { Theme, EmojiClickData } from 'emoji-picker-react'
-import { 
-  MessageCircle, Users, Phone, Settings, Search, Plus, 
+import {
+  MessageCircle, Users, Phone, Settings, Search, Plus,
   MoreVertical, LogOut, Moon, Sun, X, UserPlus,
   Camera, Mic, Send, Paperclip, Smile, Check, CheckCheck,
   ArrowLeft, Video, Loader2, PhoneIncoming, PhoneOutgoing, PhoneMissed, User,
@@ -18,16 +18,17 @@ import { useChatStore, Message } from '@/store/chat-store'
 import { useSocket, useLastSeen, useUserStatus } from '@/hooks/useSocket'
 import { useTheme } from 'next-themes'
 import { format, isToday, isYesterday } from 'date-fns'
+import { ConversationScreen } from './conversation-screen'
 
 // Chat Header Component with live status updates
-function ChatHeader({ 
-  onBack, 
-  otherName, 
-  otherAvatar, 
+function ChatHeader({
+  onBack,
+  otherName,
+  otherAvatar,
   otherUserId,
   onSearch,
-  showSearch 
-}: { 
+  showSearch
+}: {
   onBack: () => void
   otherName: string
   otherAvatar?: string | null
@@ -36,19 +37,19 @@ function ChatHeader({
   showSearch: boolean
 }) {
   const { typingUsers, currentUser } = useChatStore()
-  
+
   // Get live user status
   const { isOnline, lastSeen } = useUserStatus(otherUserId)
   const lastSeenText = useLastSeen(lastSeen)
-  
+
   // Only show typing indicator if the OTHER person (not current user) is typing
   const isOtherUserTyping = typingUsers.some(
     u => u.userId === otherUserId && u.userId !== currentUser?.id
   )
-  
+
   const [showMenu, setShowMenu] = useState(false)
   const [activeModal, setActiveModal] = useState<string | null>(null)
-  
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
   }
@@ -74,7 +75,7 @@ function ChatHeader({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          
+
           {/* Avatar with online indicator */}
           <div className="relative flex-shrink-0">
             <Avatar className="w-10 h-10">
@@ -84,11 +85,10 @@ function ChatHeader({
               </AvatarFallback>
             </Avatar>
             {/* Online indicator on avatar */}
-            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#075e54] dark:border-slate-800 ${
-              isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
-            }`} />
+            <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#075e54] dark:border-slate-800 ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-400'
+              }`} />
           </div>
-          
+
           {/* Name and Status */}
           <div className="flex-1 min-w-0 ml-1">
             <h2 className="font-semibold text-white truncate text-base leading-tight">{otherName}</h2>
@@ -102,7 +102,7 @@ function ChatHeader({
               )}
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex items-center gap-0.5 flex-shrink-0">
             <button className="p-2 active:bg-white/20 rounded-full transition-colors text-white">
@@ -111,13 +111,13 @@ function ChatHeader({
             <button className="p-2 active:bg-white/20 rounded-full transition-colors text-white">
               <Phone className="w-5 h-5" />
             </button>
-            <button 
+            <button
               onClick={onSearch}
               className="p-2 active:bg-white/20 rounded-full transition-colors text-white"
             >
               <Search className="w-5 h-5" />
             </button>
-            <button 
+            <button
               className="p-2 active:bg-white/20 rounded-full transition-colors text-white"
               onClick={() => setShowMenu(!showMenu)}
             >
@@ -138,9 +138,8 @@ function ChatHeader({
               {menuItems.map((item, index) => (
                 <button
                   key={index}
-                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors ${
-                    item.danger ? 'text-red-400' : 'text-white'
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors ${item.danger ? 'text-red-400' : 'text-white'
+                    }`}
                   onClick={() => {
                     setShowMenu(false)
                     item.action()
@@ -184,7 +183,7 @@ function ChatHeader({
                   <h3 className="text-xl font-semibold text-white">{otherName}</h3>
                   <p className="text-gray-400 text-sm mt-1">+1 234 567 8900</p>
                 </div>
-                
+
                 <div className="p-4 space-y-4">
                   <div className="bg-slate-700 rounded-xl p-4">
                     <p className="text-xs text-purple-400 uppercase tracking-wider mb-2">About</p>
@@ -272,7 +271,7 @@ function ChatHeader({
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                
+
                 <div className="p-4">
                   <p className="text-sm text-gray-400 mb-4">Choose a theme</p>
                   <div className="grid grid-cols-3 gap-3">
@@ -293,7 +292,7 @@ function ChatHeader({
                       </button>
                     ))}
                   </div>
-                  
+
                   <div className="flex gap-3 mt-6">
                     <Button
                       variant="outline"
@@ -328,7 +327,7 @@ function ChatHeader({
                     <X className="w-5 h-5" />
                   </button>
                 </div>
-                
+
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-3">
                     {['Default', 'Dots', 'Lines', 'Gradient'].map((name) => (
@@ -338,7 +337,7 @@ function ChatHeader({
                       </button>
                     ))}
                   </div>
-                  
+
                   <Button
                     className="w-full mt-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
                     onClick={() => setActiveModal(null)}
@@ -481,10 +480,10 @@ export function MobileLayout() {
     logout,
     onlineUsers
   } = useChatStore()
-  
+
   const { theme, setTheme } = useTheme()
   const { sendMessage, startTyping, stopTyping } = useSocket()
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNewChat, setShowNewChat] = useState(false)
@@ -493,18 +492,18 @@ export function MobileLayout() {
   const [showSearch, setShowSearch] = useState(false)
   const [loadingMessages, setLoadingMessages] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  
+
   const userMenuRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
-  
+
   // Handle emoji click
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     setMessageInput((prev) => prev + emojiData.emoji)
     handleTyping()
   }
-  
+
   // Close emoji picker on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -515,7 +514,7 @@ export function MobileLayout() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-  
+
   // Keep user online when tab is visible
   useEffect(() => {
     if (!currentUser) return
@@ -610,7 +609,7 @@ export function MobileLayout() {
     const d = new Date(date)
     const now = new Date()
     const diff = now.getTime() - d.getTime()
-    
+
     if (diff < 86400000) {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } else if (diff < 604800000) {
@@ -662,12 +661,12 @@ export function MobileLayout() {
   // Send message
   const handleSend = async () => {
     if (!messageInput.trim() || !currentUser || !selectedConversation) return
-    
+
     setSending(true)
     const content = messageInput.trim()
     setMessageInput('')
     stopTyping(selectedConversation.id, currentUser.id)
-    
+
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
       conversationId: selectedConversation.id,
@@ -679,7 +678,7 @@ export function MobileLayout() {
       status: 'sent',
       createdAt: new Date()
     }
-    
+
     addMessage(tempMessage)
 
     try {
@@ -713,7 +712,7 @@ export function MobileLayout() {
 
   // Filter conversations
   const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTab = activeTab === 'group' ? conv.type === 'group' : conv.type === 'private' || activeTab === 'message'
@@ -729,7 +728,7 @@ export function MobileLayout() {
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
-    
+
     if (diffMins < 1) return 'just now'
     if (diffMins < 60) return `${diffMins} min ago`
     if (diffHours < 24) return `${diffHours}h ago`
@@ -742,199 +741,7 @@ export function MobileLayout() {
   // CONVERSATION VIEW (Chat Screen)
   // ==========================================
   if (selectedConversation) {
-    const otherName = selectedConversation.name || selectedConversation.otherUser?.name || 'Unknown'
-    const otherAvatar = selectedConversation.avatar || selectedConversation.otherUser?.avatar
-    const otherUserId = selectedConversation.otherUser?.id
-
-    return (
-      <div className="fixed inset-0 flex flex-col bg-[#ece5dd] dark:bg-slate-900">
-        {/* ========== CHAT HEADER ========== */}
-        <ChatHeader
-          onBack={handleBack}
-          otherName={otherName}
-          otherAvatar={otherAvatar}
-          otherUserId={otherUserId}
-          onSearch={() => setShowSearch(!showSearch)}
-          showSearch={showSearch}
-        />
-        
-        {/* Search Bar */}
-        {showSearch && (
-          <div className="bg-[#075e54] dark:bg-slate-800 px-3 pb-2">
-            <Input
-              placeholder="Search messages..."
-              className="bg-white dark:bg-slate-700 border-0 h-9 rounded-lg"
-              autoFocus
-            />
-          </div>
-        )}
-
-        {/* ========== MESSAGES AREA ========== */}
-        <div className="flex-1 overflow-y-auto px-3 py-2">
-          {loadingMessages ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-[#075e54]" />
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-20 h-20 bg-white dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 shadow-md">
-                <Send className="w-10 h-10 text-[#075e54]" />
-              </div>
-              <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">No messages yet</p>
-              <p className="text-gray-400 dark:text-gray-500 text-sm">Say hello to start the conversation 👋</p>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {groupedMessages.map((group) => (
-                <div key={group.date}>
-                  {/* Date Separator */}
-                  <div className="flex items-center justify-center my-4">
-                    <span className="px-3 py-1.5 bg-white/90 dark:bg-slate-700/90 rounded-lg text-xs text-gray-600 dark:text-gray-300 shadow-sm font-medium">
-                      {group.date}
-                    </span>
-                  </div>
-                  
-                  {/* Messages */}
-                  <div className="space-y-1">
-                    {group.messages.map((message) => {
-                      const isOwn = message.senderId === currentUser?.id
-                      
-                      return (
-                        <div
-                          key={message.id}
-                          className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                        >
-                          <div
-                            className={`max-w-[85%] px-3 py-2 ${
-                              isOwn
-                                ? 'bg-[#dcf8c6] dark:bg-teal-600 text-gray-900 dark:text-white rounded-lg rounded-tr-sm'
-                                : 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg rounded-tl-sm shadow-sm'
-                            }`}
-                          >
-                            {!isOwn && selectedConversation.type === 'group' && (
-                              <p className="text-xs text-teal-600 dark:text-teal-300 font-semibold mb-1">
-                                {message.senderName}
-                              </p>
-                            )}
-                            
-                            <p className="text-[15px] break-words leading-relaxed">{message.content}</p>
-                            
-                            <div className={`flex items-center justify-end gap-1 mt-1 ${
-                              isOwn ? 'text-gray-500 dark:text-gray-200' : 'text-gray-400'
-                            }`}>
-                              <span className="text-[11px]">
-                                {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              {isOwn && (
-                                message.status === 'read' ? (
-                                  <CheckCheck className="w-4 h-4 text-blue-500" />
-                                ) : message.status === 'delivered' ? (
-                                  <CheckCheck className="w-4 h-4" />
-                                ) : (
-                                  <Check className="w-4 h-4" />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          
-          {/* Typing Indicator */}
-          {typingUsers.length > 0 && (
-            <div className="flex justify-start mt-2">
-              <div className="bg-white dark:bg-slate-700 px-4 py-2.5 rounded-lg rounded-tl-sm shadow-sm">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            </div>
-          )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* ========== INPUT AREA ========== */}
-        <div className="bg-[#f0f0f0] dark:bg-slate-800 flex-shrink-0 relative" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-          {/* Emoji Picker */}
-          <AnimatePresence>
-            {showEmojiPicker && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="overflow-hidden"
-                ref={emojiPickerRef}
-              >
-                <EmojiPicker
-                  onEmojiClick={handleEmojiClick}
-                  theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT}
-                  width="100%"
-                  height={350}
-                  searchDisabled
-                  skinTonesDisabled
-                  previewConfig={{ showPreview: false }}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
-          <div className="flex items-center px-2 py-2 gap-2">
-            {/* Emoji Button */}
-            <button 
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className={`p-2 transition-colors flex-shrink-0 ${showEmojiPicker ? 'text-[#075e54]' : 'text-gray-500 active:text-[#075e54]'}`}
-            >
-              <Smile className="w-6 h-6" />
-            </button>
-            
-            {/* Input Container */}
-            <div className="flex-1 min-w-0 bg-white dark:bg-slate-700 rounded-full px-4 py-2 flex items-center">
-              <Input
-                value={messageInput}
-                onChange={(e) => {
-                  setMessageInput(e.target.value)
-                  handleTyping()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSend()
-                  }
-                }}
-                placeholder="Message"
-                className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-[15px] px-0"
-              />
-              <button className="p-1 text-gray-400 active:text-[#075e54] transition-colors flex-shrink-0 ml-1">
-                <Paperclip className="w-5 h-5" />
-              </button>
-            </div>
-            
-            {/* Send/Mic Button */}
-            {messageInput.trim() ? (
-              <button
-                onClick={handleSend}
-                disabled={sending}
-                className="p-2.5 bg-[#075e54] active:bg-[#054d47] rounded-full text-white transition-colors flex-shrink-0"
-              >
-                <Send className="w-5 h-5" />
-              </button>
-            ) : (
-              <button className="p-2.5 text-[#075e54] transition-colors flex-shrink-0">
-                <Mic className="w-6 h-6" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    )
+    return <ConversationScreen onBack={handleBack} />
   }
 
   // ==========================================
@@ -954,7 +761,7 @@ export function MobileLayout() {
             </button>
             <h1 className="text-xl font-bold text-white flex-1">Contacts</h1>
           </div>
-          
+
           {/* Search Bar */}
           <div className="px-3 pb-2">
             <div className="relative">
@@ -971,8 +778,8 @@ export function MobileLayout() {
 
         {/* Contacts List */}
         <div className="flex-1 overflow-y-auto">
-          <MobileContactsList 
-            searchQuery={searchQuery} 
+          <MobileContactsList
+            searchQuery={searchQuery}
             onSelectChat={(conv) => {
               setSelectedConversation(conv)
             }}
@@ -1059,7 +866,7 @@ export function MobileLayout() {
               >
                 <MoreVertical className="w-5 h-5" />
               </button>
-              
+
               {/* Dropdown Menu */}
               <AnimatePresence>
                 {showUserMenu && (
@@ -1128,7 +935,7 @@ export function MobileLayout() {
             </div>
           </div>
         </div>
-        
+
         {/* Tabs */}
         <div className="flex">
           {[
@@ -1142,9 +949,8 @@ export function MobileLayout() {
                 setActiveTab(tab.id as 'message' | 'group' | 'calls' | 'contacts')
                 setCurrentView('chats')
               }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id ? 'text-white' : 'text-white/60'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative ${activeTab === tab.id ? 'text-white' : 'text-white/60'
+                }`}
             >
               <tab.icon className="w-5 h-5" />
               <span>{tab.label}</span>
@@ -1183,7 +989,7 @@ export function MobileLayout() {
               {activeTab === 'group' ? <Users className="w-10 h-10 text-[#075e54]" /> : <MessageCircle className="w-10 h-10 text-[#075e54]" />}
             </div>
             <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
-              {activeTab === 'group' 
+              {activeTab === 'group'
                 ? (searchQuery ? 'No groups found' : 'No groups yet')
                 : (searchQuery ? 'No chats found' : 'No conversations yet')}
             </p>
@@ -1220,9 +1026,8 @@ export function MobileLayout() {
                     </AvatarFallback>
                   </Avatar>
                   {conv.type === 'private' && (
-                    <div className={`absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white dark:border-slate-900 rounded-full ${
-                      conv.otherUser?.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                    }`} />
+                    <div className={`absolute bottom-0.5 right-0.5 w-3.5 h-3.5 border-2 border-white dark:border-slate-900 rounded-full ${conv.otherUser?.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                      }`} />
                   )}
                 </div>
 
@@ -1314,7 +1119,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
 
   const handleCreateChat = async () => {
     if (!currentUser || selectedUsers.length === 0) return
-    
+
     setCreating(true)
     try {
       const response = await fetch('/api/conversations', {
@@ -1327,13 +1132,13 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
           creatorId: currentUser.id
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (!data.existed) {
         addConversation(data.conversation)
       }
-      
+
       setSelectedConversation(data.conversation)
       onClose()
     } catch (error) {
@@ -1347,7 +1152,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <div 
+      <div
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
@@ -1371,7 +1176,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-4 text-gray-400" />
             <Input
@@ -1381,7 +1186,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
               className="pl-9 bg-gray-100 dark:bg-slate-700 border-0 h-10 rounded-full"
             />
           </div>
-          
+
           {selectedUsers.length > 0 && (
             <div className="mt-3 space-y-2">
               <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
@@ -1393,7 +1198,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
                 />
                 Create as group
               </label>
-              
+
               {isGroup && (
                 <Input
                   placeholder="Group name..."
@@ -1402,7 +1207,7 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
                   className="bg-gray-100 dark:bg-slate-700 border-0"
                 />
               )}
-              
+
               <div className="flex flex-wrap gap-1.5">
                 {selectedUsers.map(userId => {
                   const user = users.find(u => u.id === userId)
@@ -1438,11 +1243,10 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
                       : [...prev, user.id]
                   )
                 }}
-                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${
-                  selectedUsers.includes(user.id)
-                    ? 'bg-[#075e54]/10 dark:bg-[#075e54]/20'
-                    : 'active:bg-gray-50 dark:active:bg-slate-700'
-                }`}
+                className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors ${selectedUsers.includes(user.id)
+                  ? 'bg-[#075e54]/10 dark:bg-[#075e54]/20'
+                  : 'active:bg-gray-50 dark:active:bg-slate-700'
+                  }`}
               >
                 <Avatar className="w-12 h-12 flex-shrink-0">
                   <AvatarFallback className="bg-gray-200 dark:bg-slate-700 text-sm font-medium">
@@ -1453,11 +1257,10 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
                   <h3 className="font-medium text-gray-900 dark:text-white truncate">{user.name}</h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
                 </div>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
-                  selectedUsers.includes(user.id)
-                    ? 'bg-[#075e54] border-[#075e54]'
-                    : 'border-gray-300 dark:border-slate-600'
-                }`}>
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selectedUsers.includes(user.id)
+                  ? 'bg-[#075e54] border-[#075e54]'
+                  : 'border-gray-300 dark:border-slate-600'
+                  }`}>
                   {selectedUsers.includes(user.id) && (
                     <Check className="w-4 h-4 text-white" />
                   )}
@@ -1491,12 +1294,12 @@ function NewChatModal({ open, onClose }: { open: boolean; onClose: () => void })
 // ==========================================
 // MOBILE CONTACTS LIST COMPONENT
 // ==========================================
-function MobileContactsList({ 
-  searchQuery, 
-  onSelectChat 
-}: { 
+function MobileContactsList({
+  searchQuery,
+  onSelectChat
+}: {
   searchQuery: string
-  onSelectChat: (conv: any) => void 
+  onSelectChat: (conv: any) => void
 }) {
   const { currentUser } = useChatStore()
   const [users, setUsers] = useState<any[]>([])
@@ -1504,9 +1307,9 @@ function MobileContactsList({
 
   useEffect(() => {
     if (!currentUser) return
-    
+
     let isMounted = true
-    
+
     const fetchUsers = async () => {
       try {
         const response = await fetch(`/api/users?excludeUserId=${currentUser.id}`)
@@ -1518,9 +1321,9 @@ function MobileContactsList({
         console.error('Failed to fetch users:', error)
       }
     }
-    
+
     fetchUsers()
-    
+
     return () => {
       isMounted = false
     }
@@ -1562,7 +1365,7 @@ function MobileContactsList({
     const diffMs = now.getTime() - d.getTime()
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
-    
+
     if (diffMins < 1) return 'just now'
     if (diffMins < 60) return `${diffMins} min ago`
     if (diffHours < 24) return `${diffHours}h ago`
@@ -1710,7 +1513,7 @@ function MobileCallsList() {
     const d = new Date(date)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-    
+
     if (diffDays === 0) return `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     if (diffDays === 1) return `Yesterday, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
@@ -1753,7 +1556,7 @@ function MobileCallsList() {
                 {getInitials(call.name)}
               </AvatarFallback>
             </Avatar>
-            
+
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-gray-900 dark:text-white">{call.name}</h3>
               <div className="flex items-center gap-1.5">
@@ -1770,7 +1573,7 @@ function MobileCallsList() {
                 )}
               </div>
             </div>
-            
+
             <div className="flex flex-col items-end gap-1">
               <span className="text-xs text-gray-400">{formatTime(call.timestamp)}</span>
               <button className="p-2 active:bg-[#075e54]/20 rounded-full text-[#075e54]">
@@ -1829,25 +1632,25 @@ function MobileProfileView() {
       {/* Profile Info */}
       <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
         <label className="text-sm text-gray-500 dark:text-gray-400 mb-1.5 block">Name</label>
-        <Input 
-          value={name} 
-          onChange={(e) => setName(e.target.value)} 
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
           className="bg-white dark:bg-slate-700 border-0"
         />
       </div>
 
       <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4">
         <label className="text-sm text-gray-500 dark:text-gray-400 mb-1.5 block">Email</label>
-        <Input 
-          value={currentUser?.email || ''} 
-          disabled 
+        <Input
+          value={currentUser?.email || ''}
+          disabled
           className="bg-gray-100 dark:bg-slate-600 text-gray-500 dark:text-gray-400"
         />
         <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Email cannot be changed</p>
       </div>
 
-      <Button 
-        onClick={handleSave} 
+      <Button
+        onClick={handleSave}
         className="w-full bg-[#075e54] hover:bg-[#054d47] h-12 text-base"
       >
         {saved ? (
@@ -1900,8 +1703,8 @@ function MobileSettingsView() {
 
       {/* Settings Options */}
       <div className="space-y-2">
-        <button 
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+        <button
+          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
           className="w-full flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl active:bg-gray-100 dark:active:bg-slate-700 transition-colors"
         >
           <div className="w-10 h-10 bg-[#075e54]/10 dark:bg-teal-500/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1913,8 +1716,8 @@ function MobileSettingsView() {
           </div>
         </button>
 
-        <button 
-          onClick={() => setShowLogoutConfirm(true)} 
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
           className="w-full flex items-center gap-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-xl active:bg-red-100 dark:active:bg-red-900/30 transition-colors"
         >
           <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
@@ -1937,7 +1740,7 @@ function MobileSettingsView() {
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowLogoutConfirm(false)} />
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="relative bg-white dark:bg-slate-800 rounded-2xl p-5 max-w-sm w-full shadow-xl"
@@ -1945,15 +1748,15 @@ function MobileSettingsView() {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Log Out?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">Are you sure you want to log out of LoyalChat?</p>
             <div className="flex gap-3">
-              <Button 
-                onClick={() => setShowLogoutConfirm(false)} 
-                variant="outline" 
+              <Button
+                onClick={() => setShowLogoutConfirm(false)}
+                variant="outline"
                 className="flex-1 h-11"
               >
                 Cancel
               </Button>
-              <Button 
-                onClick={handleLogout} 
+              <Button
+                onClick={handleLogout}
                 className="flex-1 bg-red-500 hover:bg-red-600 h-11"
               >
                 Log Out

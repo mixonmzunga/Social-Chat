@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import EmojiPicker, { Theme, EmojiClickData } from 'emoji-picker-react'
-import { 
-  MessageCircle, Users, Settings, Search, Plus, 
+import {
+  MessageCircle, Users, Settings, Search, Plus,
   MoreVertical, Phone, Video, LogOut, Moon, Sun,
   ArrowLeft, Check, CheckCheck, Send, Paperclip, Smile, Mic,
   X, Loader2, PhoneIncoming, PhoneOutgoing, PhoneMissed, UserPlus,
@@ -18,6 +18,7 @@ import { useChatStore, Message } from '@/store/chat-store'
 import { useSocket } from '@/hooks/useSocket'
 import { useTheme } from 'next-themes'
 import { format, isToday, isYesterday } from 'date-fns'
+import { ConversationScreen } from './conversation-screen'
 
 export function DesktopLayout() {
   const {
@@ -37,10 +38,10 @@ export function DesktopLayout() {
     logout,
     onlineUsers
   } = useChatStore()
-  
+
   const { theme, setTheme } = useTheme()
   const { sendMessage, startTyping, stopTyping } = useSocket()
-  
+
   const [searchQuery, setSearchQuery] = useState('')
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNewChat, setShowNewChat] = useState(false)
@@ -51,20 +52,20 @@ export function DesktopLayout() {
   const [showChatMenu, setShowChatMenu] = useState(false)
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  
+
   const userMenuRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const emojiPickerRef = useRef<HTMLDivElement>(null)
-  
+
   const [isMobile, setIsMobile] = useState(false)
-  
+
   // Handle emoji click
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     setMessageInput((prev) => prev + emojiData.emoji)
     handleTyping()
   }
-  
+
   // Close emoji picker on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -75,7 +76,7 @@ export function DesktopLayout() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-  
+
   useEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768)
     checkMobile()
@@ -136,7 +137,7 @@ export function DesktopLayout() {
 
   // Filter conversations
   const filteredConversations = conversations.filter(conv => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       conv.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.otherUser?.name.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTab = activeTab === 'group' ? conv.type === 'group' : conv.type === 'private' || activeTab === 'message'
@@ -151,7 +152,7 @@ export function DesktopLayout() {
     const d = new Date(date)
     const now = new Date()
     const diff = now.getTime() - d.getTime()
-    
+
     if (diff < 86400000) {
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } else if (diff < 604800000) {
@@ -205,12 +206,12 @@ export function DesktopLayout() {
   // Send message
   const handleSend = async () => {
     if (!messageInput.trim() || !currentUser || !selectedConversation) return
-    
+
     setSending(true)
     const content = messageInput.trim()
     setMessageInput('')
     stopTyping(selectedConversation.id, currentUser.id)
-    
+
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
       conversationId: selectedConversation.id,
@@ -222,7 +223,7 @@ export function DesktopLayout() {
       status: 'sent',
       createdAt: new Date()
     }
-    
+
     addMessage(tempMessage)
 
     try {
@@ -269,628 +270,9 @@ export function DesktopLayout() {
       return <CallsView onBack={handleBack} />
     }
     if (selectedConversation) {
-      const otherName = selectedConversation.name || selectedConversation.otherUser?.name || 'Unknown'
-      const otherAvatar = selectedConversation.avatar || selectedConversation.otherUser?.avatar
-      const otherUserId = selectedConversation.otherUser?.id
-      
-      // Get real-time online status from onlineUsers array
-      const onlineUser = onlineUsers.find(u => u.id === otherUserId)
-      const isOnline = onlineUser?.isOnline ?? selectedConversation.otherUser?.isOnline ?? false
-      const lastSeen = onlineUser?.lastSeen ?? selectedConversation.otherUser?.lastSeen
-      
-      // Only show typing indicator if the OTHER person is typing
-      const isOtherUserTyping = typingUsers.some(
-        u => u.userId === otherUserId && u.userId !== currentUser?.id
-      )
-      
-      // Format last seen with better time display
-      const formatLastSeen = (date: Date | string | null | undefined) => {
-        if (!date) return 'offline'
-        const d = new Date(date)
-        const now = new Date()
-        const diffMs = now.getTime() - d.getTime()
-        const diffMins = Math.floor(diffMs / 60000)
-        const diffHours = Math.floor(diffMs / 3600000)
-        const diffDays = Math.floor(diffMs / 86400000)
-        
-        if (diffMins < 1) return 'just now'
-        if (diffMins < 60) return `${diffMins} min ago`
-        if (diffHours < 24) return `${diffHours}h ago`
-        if (diffDays === 1) return 'yesterday'
-        if (diffDays < 7) return `${diffDays} days ago`
-        return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
-      }
-
-      const menuItems = [
-        { icon: User, label: 'Contact info', action: () => setActiveModal('contact') },
-        { icon: Ban, label: 'Block', action: () => setActiveModal('block'), danger: true },
-        { icon: Sun, label: 'Chat theme', action: () => setActiveModal('theme') },
-        { icon: ImageIcon, label: 'Wallpaper', action: () => setActiveModal('wallpaper') },
-        { icon: Star, label: 'Add to favorites', action: () => setActiveModal('favorites') },
-        { icon: Download, label: 'Export chat', action: () => setActiveModal('export') },
-        { icon: Trash2, label: 'Delete chat', action: () => setActiveModal('delete'), danger: true },
-      ]
-
-      return (
-        <div className="h-full flex flex-col bg-gray-50 dark:bg-slate-800">
-          {/* Header */}
-          <header className="bg-[#075e54] dark:bg-slate-900 px-3 py-2.5 border-b border-gray-200 dark:border-slate-700 flex items-center gap-2 flex-shrink-0 relative">
-            {isMobile && (
-              <button
-                onClick={handleBack}
-                className="p-1.5 hover:bg-white/10 rounded-full transition-colors text-white"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            )}
-            
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              {/* Avatar with online indicator */}
-              <div className="relative flex-shrink-0">
-                <Avatar className="w-9 h-9">
-                  <AvatarImage src={otherAvatar || undefined} />
-                  <AvatarFallback className="bg-gray-300 dark:bg-slate-600 text-gray-700 dark:text-gray-200 text-sm">
-                    {getInitials(otherName)}
-                  </AvatarFallback>
-                </Avatar>
-                {/* Online indicator on avatar */}
-                {isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-[#075e54] dark:border-slate-900" />
-                )}
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <h2 className="font-semibold text-white truncate text-sm">{otherName}</h2>
-                <div className="text-xs">
-                  {isOtherUserTyping ? (
-                    <span className="text-green-300 font-medium">typing...</span>
-                  ) : isOnline ? (
-                    <span className="text-green-300 font-medium">online</span>
-                  ) : (
-                    <span className="text-white/70">last seen {formatLastSeen(lastSeen)}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-0.5 flex-shrink-0">
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                <Video className="w-5 h-5" />
-              </button>
-              <button className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                <Phone className="w-5 h-5" />
-              </button>
-              <button 
-                onClick={() => setShowSearch(!showSearch)}
-                className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"
-              >
-                <Search className="w-5 h-5" />
-              </button>
-              <button 
-                className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"
-                onClick={() => setShowChatMenu(!showChatMenu)}
-              >
-                <MoreVertical className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Dropdown Menu */}
-            <AnimatePresence>
-              {showChatMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                  className="absolute top-full right-3 mt-1 bg-slate-700 rounded-xl shadow-xl overflow-hidden z-[100] min-w-[180px]"
-                >
-                  {menuItems.map((item, index) => (
-                    <button
-                      key={index}
-                      className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-white/10 transition-colors ${
-                        item.danger ? 'text-red-400' : 'text-white'
-                      }`}
-                      onClick={() => {
-                        setShowChatMenu(false)
-                        item.action()
-                      }}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      <span className="text-sm">{item.label}</span>
-                    </button>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </header>
-
-          {/* Modal Overlay */}
-          <AnimatePresence>
-            {activeModal && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex items-center justify-center p-4"
-                onClick={() => setActiveModal(null)}
-              >
-                {/* Contact Info Modal */}
-                {activeModal === 'contact' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-6 text-center border-b border-white/10">
-                      <Avatar className="w-20 h-20 mx-auto mb-3 ring-4 ring-white/10">
-                        <AvatarImage src={otherAvatar || undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-purple-500 to-blue-500 text-white text-2xl font-semibold">
-                          {getInitials(otherName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <h3 className="text-xl font-semibold text-white">{otherName}</h3>
-                      <p className="text-gray-400 text-sm mt-1">+1 234 567 8900</p>
-                    </div>
-                    
-                    <div className="p-4 space-y-4">
-                      <div className="bg-slate-700 rounded-xl p-4">
-                        <p className="text-xs text-purple-400 uppercase tracking-wider mb-2">About</p>
-                        <p className="text-white text-sm">Available</p>
-                      </div>
-
-                      <div className="bg-slate-700 rounded-xl p-4">
-                        <p className="text-xs text-purple-400 uppercase tracking-wider mb-2">Media, links and docs</p>
-                        <div className="grid grid-cols-4 gap-2 mt-2">
-                          {[1, 2, 3, 4].map((i) => (
-                            <div key={i} className="aspect-square bg-slate-600 rounded-lg" />
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <button className="w-full flex items-center gap-3 p-3 bg-slate-700 rounded-xl hover:bg-slate-600 transition-colors">
-                          <AlertCircle className="w-5 h-5 text-gray-400" />
-                          <span className="text-white text-sm">Report contact</span>
-                        </button>
-                        <button className="w-full flex items-center gap-3 p-3 bg-slate-700 rounded-xl hover:bg-slate-600 transition-colors">
-                          <Ban className="w-5 h-5 text-red-400" />
-                          <span className="text-red-400 text-sm">Block contact</span>
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border-t border-white/10">
-                      <Button
-                        variant="outline"
-                        className="w-full bg-transparent border-white/20 text-white hover:bg-white/10"
-                        onClick={() => setActiveModal(null)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Block Modal */}
-                {activeModal === 'block' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-6 text-center">
-                      <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Ban className="w-8 h-8 text-red-500" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Block {otherName}?</h3>
-                      <p className="text-gray-400 text-sm mb-6">
-                        Blocked contacts will no longer be able to call you or send you messages.
-                      </p>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white">
-                          Block
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Theme Modal */}
-                {activeModal === 'theme' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between p-4 border-b border-white/10">
-                      <h3 className="text-lg font-semibold text-white">Chat Theme</h3>
-                      <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-white">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="p-4">
-                      <p className="text-sm text-gray-400 mb-4">Choose a theme</p>
-                      <div className="grid grid-cols-3 gap-3">
-                        {[
-                          { name: 'Purple', gradient: 'from-purple-600 to-blue-500' },
-                          { name: 'Ocean', gradient: 'from-cyan-500 to-blue-500' },
-                          { name: 'Sunset', gradient: 'from-orange-500 to-pink-500' },
-                          { name: 'Forest', gradient: 'from-green-500 to-teal-500' },
-                          { name: 'Cotton', gradient: 'from-pink-500 to-violet-500' },
-                          { name: 'Dark', gradient: 'from-gray-600 to-gray-800' },
-                        ].map((t) => (
-                          <button
-                            key={t.name}
-                            className="flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-white/5 transition-all"
-                          >
-                            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${t.gradient}`} />
-                            <span className="text-xs text-gray-400">{t.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                      
-                      <div className="flex gap-3 mt-6">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Apply
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Wallpaper Modal */}
-                {activeModal === 'wallpaper' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between p-4 border-b border-white/10">
-                      <h3 className="text-lg font-semibold text-white">Chat Wallpaper</h3>
-                      <button onClick={() => setActiveModal(null)} className="text-gray-400 hover:text-white">
-                        <X className="w-5 h-5" />
-                      </button>
-                    </div>
-                    
-                    <div className="p-4">
-                      <div className="grid grid-cols-2 gap-3">
-                        {['Default', 'Dots', 'Lines', 'Gradient'].map((name) => (
-                          <button key={name} className="flex flex-col items-center gap-2 p-2 rounded-xl hover:bg-white/5 transition-colors">
-                            <div className="w-full aspect-[9/16] rounded-xl bg-slate-600" />
-                            <span className="text-xs text-gray-400">{name}</span>
-                          </button>
-                        ))}
-                      </div>
-                      
-                      <Button
-                        className="w-full mt-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                        onClick={() => setActiveModal(null)}
-                      >
-                        Set Wallpaper
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Favorites Modal */}
-                {activeModal === 'favorites' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-6 text-center">
-                      <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Star className="w-8 h-8 text-yellow-500" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Add to Favorites?</h3>
-                      <p className="text-gray-400 text-sm mb-6">
-                        {otherName} will be added to your favorite contacts for quick access.
-                      </p>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Export Modal */}
-                {activeModal === 'export' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-6 text-center">
-                      <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Download className="w-8 h-8 text-purple-400" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Export Chat?</h3>
-                      <p className="text-gray-400 text-sm mb-4">
-                        The chat will be exported as a .txt file
-                      </p>
-                      <label className="flex items-center gap-2 text-sm text-gray-300 mb-6 justify-center">
-                        <input type="checkbox" defaultChecked className="accent-purple-500" />
-                        Include media files
-                      </label>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          className="flex-1 bg-gradient-to-r from-purple-500 to-blue-500 text-white"
-                        >
-                          Export
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Delete Modal */}
-                {activeModal === 'delete' && (
-                  <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0.9, opacity: 0 }}
-                    className="bg-slate-800 rounded-2xl w-full max-w-sm overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-6 text-center">
-                      <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <Trash2 className="w-8 h-8 text-red-500" />
-                      </div>
-                      <h3 className="text-xl font-semibold text-white mb-2">Delete this chat?</h3>
-                      <p className="text-gray-400 text-sm mb-6">
-                        Messages will only be removed from your device. This action cannot be undone.
-                      </p>
-                      <div className="flex gap-3">
-                        <Button
-                          variant="outline"
-                          className="flex-1 bg-transparent border-white/20 text-white hover:bg-white/10"
-                          onClick={() => setActiveModal(null)}
-                        >
-                          Cancel
-                        </Button>
-                        <Button className="flex-1 bg-red-500 hover:bg-red-600 text-white">
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Search Bar */}
-          <AnimatePresence>
-            {showSearch && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 px-3 overflow-hidden flex-shrink-0"
-              >
-                <Input
-                  placeholder="Search messages..."
-                  className="my-2 bg-gray-100 dark:bg-slate-800 border-0 h-9"
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-1 chat-bg-pattern">
-            {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="w-16 h-16 bg-teal-100 dark:bg-teal-900/30 rounded-full flex items-center justify-center mb-3">
-                  <Send className="w-8 h-8 text-teal-500" />
-                </div>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  No messages yet. Say hello! 👋
-                </p>
-              </div>
-            ) : (
-              groupedMessages.map((group) => (
-                <div key={group.date}>
-                  <div className="flex items-center justify-center my-3">
-                    <span className="px-3 py-1 bg-white/80 dark:bg-slate-700/80 rounded-full text-xs text-gray-600 dark:text-gray-300 shadow-sm backdrop-blur-sm">
-                      {group.date}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-1">
-                    {group.messages.map((message, index) => {
-                      const isOwn = message.senderId === currentUser?.id
-                      
-                      return (
-                        <motion.div
-                          key={message.id}
-                          initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          className={`flex ${isOwn ? 'justify-end' : 'justify-start'} message-bubble`}
-                        >
-                          <div
-                            className={`max-w-[60%] px-3 py-1.5 ${
-                              isOwn
-                                ? 'bg-[#dcf8c6] dark:bg-teal-700 text-gray-900 dark:text-white rounded-lg'
-                                : 'bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg shadow-sm'
-                            }`}
-                          >
-                            {!isOwn && selectedConversation.type === 'group' && (
-                              <p className="text-xs text-teal-600 dark:text-teal-300 font-medium mb-0.5">
-                                {message.senderName}
-                              </p>
-                            )}
-                            
-                            <p className="text-sm break-words leading-relaxed">{message.content}</p>
-                            
-                            <div className={`flex items-center justify-end gap-1 mt-0.5 ${
-                              isOwn ? 'text-gray-500 dark:text-gray-300' : 'text-gray-400'
-                            }`}>
-                              <span className="text-[10px]">
-                                {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                              {isOwn && (
-                                message.status === 'read' ? (
-                                  <CheckCheck className="w-3.5 h-3.5 text-blue-500" />
-                                ) : message.status === 'delivered' ? (
-                                  <CheckCheck className="w-3.5 h-3.5" />
-                                ) : (
-                                  <Check className="w-3.5 h-3.5" />
-                                )
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))
-            )}
-            
-            {/* Typing Indicator */}
-            <AnimatePresence>
-              {isOtherUserTyping && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="flex justify-start"
-                >
-                  <div className="bg-white dark:bg-slate-700 px-3 py-2 rounded-lg shadow-sm">
-                    <div className="flex gap-1">
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot" />
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot" />
-                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full typing-dot" />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input Area */}
-          <div className="bg-gray-100 dark:bg-slate-900 p-2.5 flex-shrink-0 relative">
-            {/* Emoji Picker */}
-            <AnimatePresence>
-              {showEmojiPicker && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute bottom-full left-0 mb-2 z-50"
-                  ref={emojiPickerRef}
-                >
-                  <EmojiPicker
-                    onEmojiClick={handleEmojiClick}
-                    theme={theme === 'dark' ? Theme.DARK : Theme.LIGHT}
-                    width={350}
-                    height={400}
-                    searchDisabled
-                    skinTonesDisabled
-                    previewConfig={{ showPreview: false }}
-                  />
-                </motion.div>
-              )}
-            </AnimatePresence>
-            
-            <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-full px-3 py-1">
-              <button 
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className={`p-1.5 transition-colors flex-shrink-0 ${showEmojiPicker ? 'text-teal-500' : 'text-gray-400 hover:text-teal-500'}`}
-              >
-                <Smile className="w-5 h-5" />
-              </button>
-              
-              <Input
-                value={messageInput}
-                onChange={(e) => {
-                  setMessageInput(e.target.value)
-                  handleTyping()
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    handleSend()
-                  }
-                }}
-                placeholder="Type a message..."
-                className="flex-1 bg-transparent border-0 focus-visible:ring-0 text-sm"
-              />
-              
-              <button className="p-1.5 text-gray-400 hover:text-teal-500 transition-colors flex-shrink-0">
-                <Paperclip className="w-5 h-5" />
-              </button>
-              
-              {messageInput.trim() ? (
-                <button
-                  onClick={handleSend}
-                  disabled={sending}
-                  className="p-2 bg-[#075e54] hover:bg-[#064e47] rounded-full text-white transition-colors flex-shrink-0"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              ) : (
-                <button className="p-1.5 text-gray-400 hover:text-teal-500 transition-colors flex-shrink-0">
-                  <Mic className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )
+      return <ConversationScreen onBack={handleBack} />
     }
-    
+
     // Empty state
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-800 p-4">
@@ -934,7 +316,7 @@ export function DesktopLayout() {
                 </AvatarFallback>
               </Avatar>
             </button>
-            
+
             <AnimatePresence>
               {showUserMenu && (
                 <motion.div
@@ -998,7 +380,7 @@ export function DesktopLayout() {
               )}
             </AnimatePresence>
           </div>
-          
+
           <div className="flex items-center gap-0.5">
             <button
               onClick={() => setShowNewChat(true)}
@@ -1042,11 +424,10 @@ export function DesktopLayout() {
                   setCurrentView('chats')
                 }
               }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors relative ${
-                activeTab === tab.id
-                  ? 'text-[#075e54] dark:text-teal-400'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-              }`}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors relative ${activeTab === tab.id
+                ? 'text-[#075e54] dark:text-teal-400'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                }`}
             >
               <tab.icon className="w-4 h-4" />
               <span className="hidden sm:inline">{tab.label}</span>
@@ -1074,7 +455,7 @@ export function DesktopLayout() {
                 <MessageCircle className="w-10 h-10 text-gray-300 dark:text-slate-600 mb-3" />
               )}
               <p className="text-gray-500 dark:text-gray-400 text-sm">
-                {activeTab === 'group' 
+                {activeTab === 'group'
                   ? (searchQuery ? 'No groups found' : 'No groups yet')
                   : (searchQuery ? 'No chats found' : 'No conversations yet')}
               </p>
@@ -1095,11 +476,10 @@ export function DesktopLayout() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.02 }}
                   onClick={() => handleSelectConversation(conv)}
-                  className={`flex items-center gap-2.5 p-2.5 cursor-pointer list-item-press transition-colors ${
-                    selectedConversation?.id === conv.id
-                      ? 'bg-gray-100 dark:bg-slate-800'
-                      : ''
-                  }`}
+                  className={`flex items-center gap-2.5 p-2.5 cursor-pointer list-item-press transition-colors ${selectedConversation?.id === conv.id
+                    ? 'bg-gray-100 dark:bg-slate-800'
+                    : ''
+                    }`}
                 >
                   <div className="relative flex-shrink-0">
                     <Avatar className="w-11 h-11">
@@ -1109,9 +489,8 @@ export function DesktopLayout() {
                       </AvatarFallback>
                     </Avatar>
                     {conv.type === 'private' && (
-                      <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-slate-900 rounded-full ${
-                        conv.otherUser?.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                      }`} />
+                      <div className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-white dark:border-slate-900 rounded-full ${conv.otherUser?.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                        }`} />
                     )}
                   </div>
 
@@ -1525,7 +904,7 @@ function CallsView({ onBack }: { onBack?: () => void }) {
     const d = new Date(date)
     const now = new Date()
     const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
-    
+
     if (diffDays === 0) return `Today, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     if (diffDays === 1) return `Yesterday, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     if (diffDays < 7) return `${d.toLocaleDateString([], { weekday: 'long' })}, ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -1564,7 +943,7 @@ function CallsView({ onBack }: { onBack?: () => void }) {
           )}
           <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Calls</h1>
         </div>
-        
+
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <Input
@@ -1607,7 +986,7 @@ function CallsView({ onBack }: { onBack?: () => void }) {
                 transition={{ delay: index * 0.03 }}
                 className="px-4 py-1"
               >
-                <div 
+                <div
                   onClick={() => handleStartChat(call)}
                   className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-colors"
                 >
@@ -1617,7 +996,7 @@ function CallsView({ onBack }: { onBack?: () => void }) {
                       {getInitials(call.name)}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 dark:text-white">{call.name}</h3>
                     <div className="flex items-center gap-1.5">
@@ -1636,10 +1015,10 @@ function CallsView({ onBack }: { onBack?: () => void }) {
                       )}
                     </div>
                   </div>
-                  
+
                   <div className="flex flex-col items-end gap-1">
                     <span className="text-xs text-gray-400">{formatTime(call.timestamp)}</span>
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation()
                         // Initiate call

@@ -20,18 +20,20 @@ interface DesktopSidebarProps {
   onNavigate: (screen: Screen) => void
 }
 
-const navItems: { id: Screen; icon: typeof Home; label: string; badge?: number }[] = [
-  { id: 'feed', icon: Home, label: 'Feed' },
-  { id: 'messages', icon: MessageCircle, label: 'Messages', badge: 3 },
-  { id: 'friends', icon: Users, label: 'Friends', badge: 5 },
-  { id: 'media', icon: Image, label: 'Media' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
-]
-
 export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps) {
-  const { currentUser, logout } = useChatStore()
+  const { currentUser, logout, conversations, pendingFriendRequestsCount } = useChatStore()
   const { theme, setTheme } = useTheme()
   const [showUserMenu, setShowUserMenu] = useState(false)
+
+  const totalUnreadMessages = conversations.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0)
+
+  const navItems: { id: Screen; icon: typeof Home; label: string; badge?: number }[] = [
+    { id: 'feed', icon: Home, label: 'Feed' },
+    { id: 'messages', icon: MessageCircle, label: 'Messages', badge: totalUnreadMessages },
+    { id: 'friends', icon: Users, label: 'Friends', badge: pendingFriendRequestsCount },
+    { id: 'media', icon: Image, label: 'Media' },
+    { id: 'settings', icon: Settings, label: 'Settings' },
+  ]
 
   const getInitials = (name: string) =>
     name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
@@ -44,7 +46,7 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
         <div className="w-8 h-8 rounded-lg bg-slate-800 dark:bg-white flex items-center justify-center shadow-sm">
           <MessageCircle className="w-4 h-4 text-white dark:text-slate-900" />
         </div>
-        <span className="text-base font-semibold tracking-tight text-gray-900 dark:text-white">
+        <span className="text-lg font-semibold tracking-tight text-gray-900 dark:text-white">
           LoyaChat
         </span>
       </div>
@@ -59,7 +61,7 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
               key={item.id}
               onClick={() => onNavigate(item.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors relative',
+                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium transition-colors relative',
                 isActive
                   ? 'bg-gray-100 dark:bg-slate-800 text-gray-900 dark:text-white'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 hover:text-gray-900 dark:hover:text-white'
@@ -67,8 +69,8 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
             >
               <Icon className={cn('w-4.5 h-4.5 shrink-0', isActive ? 'w-[18px] h-[18px]' : 'w-[18px] h-[18px]')} strokeWidth={isActive ? 2.5 : 2} />
               <span>{item.label}</span>
-              {item.badge && item.badge > 0 && (
-                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-[11px] font-semibold rounded-full flex items-center justify-center">
+              {typeof item.badge === 'number' && item.badge > 0 && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-slate-800 dark:bg-white text-white dark:text-slate-900 text-xs font-semibold rounded-full flex items-center justify-center">
                   {item.badge > 9 ? '9+' : item.badge}
                 </span>
               )}
@@ -88,7 +90,7 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
       <div className="px-3 pb-2">
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-800/60 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           {theme === 'dark'
             ? <Sun className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -111,8 +113,8 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 text-left min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{currentUser?.name || 'User'}</p>
-            <p className="text-xs text-gray-400 dark:text-gray-500 truncate">@{currentUser?.username || 'username'}</p>
+            <p className="text-base font-medium text-gray-900 dark:text-white truncate">{currentUser?.name || 'User'}</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 truncate">@{currentUser?.username || 'username'}</p>
           </div>
         </button>
 
@@ -127,7 +129,7 @@ export function DesktopSidebar({ activeScreen, onNavigate }: DesktopSidebarProps
             >
               <button
                 onClick={() => { logout(); setShowUserMenu(false) }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-base text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Sign out
